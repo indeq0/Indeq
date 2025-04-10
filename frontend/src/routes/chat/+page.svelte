@@ -21,7 +21,7 @@
   let isReasoning = false;
   let conversationContainer: HTMLElement | null = null;
 
-  export let data: { integrations: string[], desktopInfo: DesktopIntegration, userCreated: string, redirectedFrom: string };
+  export let data: { integrations: string[], desktopInfo: DesktopIntegration, userCreated: string, redirectedFrom: string, registering: string };
   const isIntegrated = (provider: string): boolean => {
     return data.integrations.includes(provider.toUpperCase());
   };
@@ -40,7 +40,7 @@
 
     if (data.redirectedFrom === 'login') {
       toast.info('You are already logged in. Please sign out to access the login page.');
-    } else if (data.redirectedFrom === 'register') {
+    } else if (data.redirectedFrom === 'register' && data.registering != 'true' ) {
       toast.info('You are already logged in. Please sign out to access the register page.');
     }
     // Clean up the URL parameters

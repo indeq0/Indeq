@@ -7,12 +7,28 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
   const session = cookies.get('jwt');
   const userCreated = cookies.get('user_created');
   const redirectedFrom = cookies.get('redirected_from');
+  const registering = cookies.get('registering');
 
   // If user was just created, clear the cookie after 5 seconds
   if (userCreated) {
     cookies.set('user_created', '', {
       path: '/',
       maxAge: 5 // 5 seconds
+    });
+  }
+
+  // Clean up the registering cookie
+  if (registering) {
+    cookies.set('registering', '', {
+      path: '/',
+      maxAge: 5
+    });
+  }
+
+  if (userCreated) {
+    cookies.set('user_created', '', {
+      path: '/',
+      maxAge: 5
     });
   }
 
@@ -52,6 +68,7 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
     integrations: providers,
     desktopInfo: desktopIntegrationData,
     userCreated: userCreated,
-    redirectedFrom: redirectedFrom
+    redirectedFrom: redirectedFrom,
+    registering: registering
   };
 };

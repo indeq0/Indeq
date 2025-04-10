@@ -22,6 +22,22 @@ const login = async (email: string, password: string, cookies: Cookies) => {
     maxAge: 60 * 60 * 24,
     sameSite: 'lax'
   });
+
+  cookies.set('registering', 'true', {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 5,
+    sameSite: 'lax'
+  });
+
+  cookies.set('user_created', 'true', {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 5,
+    sameSite: 'lax'
+  });
 };
 
 export const actions = {
