@@ -37,12 +37,7 @@ export const GET = async ({ params, fetch, cookies }) => {
     return new Response(errorBody.message || 'Failed to get OAuth URL', { status: res.status });
   }
 
-  try {
     const data = await res.json();
     const oauthUrl = data.url;
-    throw redirect(302, oauthUrl);
-  } catch (error) {
-    console.error('Error in sso/[provider]/+server.ts:', error);
-    return new Response('Failed to get OAuth URL', { status: 500 });
-  }
+    redirect(302, oauthUrl);
 };
