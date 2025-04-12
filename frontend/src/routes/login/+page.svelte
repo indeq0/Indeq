@@ -9,7 +9,6 @@
 
   // Check for success or error in the server response
   $: if (form?.success) {
-    toast.success('Welcome back!');
     goto('/chat');
   }
 

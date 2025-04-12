@@ -41,6 +41,22 @@ export const actions = {
         sameSite: 'lax'
       });
 
+      cookies.set('loggingIn', 'true', {
+        httpOnly: true,
+        secure: true,
+        path: '/',
+        maxAge: 5,
+        sameSite: 'lax'
+      });
+
+      cookies.set("user_created", "false", {
+        httpOnly: true,
+        secure: true,
+        path: '/',
+        maxAge: 5,
+        sameSite: 'lax'
+      });
+
       if (response.error == null || response.error === '') {
         return { success: true };
       } else {

@@ -357,18 +357,11 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	var passwordHash sql.NullString
 	err = tx.QueryRowContext(
 		ctx,
-		"SELECT id FROM users WHERE email = $1",
+		"SELECT id, google_id, password_hash FROM users WHERE email = $1",
 		strings.ToLower(req.Email), // Normalize email
-	).Scan(&userId)
+	).Scan(&userId, &googleId, &passwordHash)
 
 	if err != sql.ErrNoRows {
-
-		fmt.Println("Email already exists checking for google id")
-		err = tx.QueryRowContext(
-			ctx,
-			"SELECT google_id, password_hash FROM users WHERE email = $1",
-			strings.ToLower(req.Email), // Normalize email
-		).Scan(&googleId, &passwordHash)
 		
 		// Google ID exists without a password hash
 		if err == nil && googleId != "" && (passwordHash.String == "") {
@@ -377,7 +370,7 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 				"UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id",
 				encodedHash,
 				strings.ToLower(req.Email),
-			).Scan(&userId)
+			).Scan()
 			if err := tx.Commit(); err != nil {
 				return nil, fmt.Errorf("failed to commit transaction: %v", err)
 			}
