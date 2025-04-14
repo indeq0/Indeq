@@ -34,8 +34,6 @@ import (
 	"golang.org/x/crypto/argon2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 )
 
 type params struct {
@@ -104,42 +102,42 @@ func generateOTP() (string, error) {
 	return string(otp), nil
 }
 
-func CheckRateLimit(ctx context.Context, redis *redis.RedisClient, key string, cfg Config) (bool, error) {
-	fullKey := fmt.Sprintf("%s:%s", cfg.KeyPrefix, key)
+// func CheckRateLimit(ctx context.Context, redis *redis.RedisClient, key string, cfg Config) (bool, error) {
+// 	fullKey := fmt.Sprintf("%s:%s", cfg.KeyPrefix, key)
 
-	count, err := redis.Incr(ctx, fullKey, 1)
-	if err != nil {
-		return false, err
-	}
-	if count == 1 {
-		if err := redis.Expire(ctx, fullKey, cfg.Duration); err != nil {
-			return false, err
-		}
-	}
+// 	count, err := redis.Incr(ctx, fullKey, 1)
+// 	if err != nil {
+// 		return false, err
+// 	}
+// 	if count == 1 {
+// 		if err := redis.Expire(ctx, fullKey, cfg.Duration); err != nil {
+// 			return false, err
+// 		}
+// 	}
 
-	return count <= int64(cfg.Limit), nil
-}
+// 	return count <= int64(cfg.Limit), nil
+// }
 
-func getIPFromContext(ctx context.Context) (string, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		if xff := md.Get("x-forwarded-for"); len(xff) > 0 {
-			return strings.Split(xff[0], ",")[0], nil
-		}
-		if cf := md.Get("cf-connecting-ip"); len(cf) > 0 && cf[0] != "" {
-			return cf[0], nil
-		}
-	}
-	// Fallback to gRPC peer address (TCP connection)
-	if p, ok := peer.FromContext(ctx); ok && p.Addr != nil {
-		host, _, err := net.SplitHostPort(p.Addr.String())
-		if err == nil {
-			return host, nil
-		}
-	}
+// func getIPFromContext(ctx context.Context) (string, error) {
+// 	md, ok := metadata.FromIncomingContext(ctx)
+// 	if ok {
+// 		if xff := md.Get("x-forwarded-for"); len(xff) > 0 {
+// 			return strings.Split(xff[0], ",")[0], nil
+// 		}
+// 		if cf := md.Get("cf-connecting-ip"); len(cf) > 0 && cf[0] != "" {
+// 			return cf[0], nil
+// 		}
+// 	}
+// 	// Fallback to gRPC peer address (TCP connection)
+// 	if p, ok := peer.FromContext(ctx); ok && p.Addr != nil {
+// 		host, _, err := net.SplitHostPort(p.Addr.String())
+// 		if err == nil {
+// 			return host, nil
+// 		}
+// 	}
 
-	return "", fmt.Errorf("no IP address found")
-}
+// 	return "", fmt.Errorf("no IP address found")
+// }
 
 // func()
 //   - loads the necessary parameters required by argon2, like memory, salt length, etc. into memory
@@ -1116,8 +1114,8 @@ func (s *authServer) ResetPassword(ctx context.Context, req *pb.ResetPasswordReq
 			Error:   "Password is required",
 		}, nil
 	}
+
 	redisKey := fmt.Sprintf("forgot:%s", req.Token)
-	log.Printf("redisKey: %s", redisKey)
 	data, err := s.redisClient.Get(ctx, redisKey)
 	if err != nil {
 		return &pb.ResetPasswordResponse{
@@ -1131,6 +1129,14 @@ func (s *authServer) ResetPassword(ctx context.Context, req *pb.ResetPasswordReq
 			Success: false,
 			Error:   "No data found",
 		}, nil
+	}
+
+	var payload ForgotPayload
+	if err := json.Unmarshal([]byte(data), &payload); err != nil {
+		return &pb.ResetPasswordResponse{
+			Success: false,
+			Error:   "Something went wrong. Please try again later.",
+		}, err
 	}
 
 	if err := s.validatePassword(req.Password); err != nil {
@@ -1179,7 +1185,7 @@ func (s *authServer) ResetPassword(ctx context.Context, req *pb.ResetPasswordReq
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, "UPDATE users SET password_hash = $1 WHERE email = $2", encodedHash, strings.ToLower(data))
+	_, err = tx.ExecContext(ctx, "UPDATE users SET password_hash = $1 WHERE email = $2", encodedHash, strings.ToLower(payload.Email))
 	if err != nil {
 		return &pb.ResetPasswordResponse{
 			Success: false,
