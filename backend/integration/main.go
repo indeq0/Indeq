@@ -889,14 +889,14 @@ func main() {
 	}
 
 	// Load the TLS configuration values for auth service
-	authTLSConfig, err := config.LoadClientTLSFromEnv("AUTH_CRT", "AUTH_KEY", "CA_CRT")
+	integrationTLSConfig, err := config.LoadServerTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY")
 	if err != nil {
 		log.Fatal("Error loading TLS client config for auth service")
 	}
 
 	authConn, err := grpc.Dial(
 		authAddress,
-		grpc.WithTransportCredentials(credentials.NewTLS(authTLSConfig)),
+		grpc.WithTransportCredentials(credentials.NewTLS(integrationTLSConfig)),
 	)
 	if err != nil {
 		log.Fatalf("Failed to connect to auth service: %v", err)
