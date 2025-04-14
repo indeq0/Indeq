@@ -4,12 +4,16 @@ option go_package = "github.com/cc-0000/indeq/common/api";
 
 package api;
 
+import "api/http.proto";
+import "api/integration.proto";
+
 service AuthenticationService {
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc Register(RegisterRequest) returns (RegisterResponse);
     rpc Verify(VerifyRequest) returns (VerifyResponse);
     rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
     rpc CreateOrUpdateGoogleUser(CreateOrUpdateGoogleUserRequest) returns (CreateOrUpdateGoogleUserResponse);
+    rpc SSOLogin(HttpSSOConnectRequest) returns (SSOConnectResponse);
 }
 
 message LoginRequest {

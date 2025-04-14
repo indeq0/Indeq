@@ -10,12 +10,16 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net"
+	"net/http"
 	"net/mail"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -45,6 +49,7 @@ type authServer struct {
 	db                *sql.DB // password database
 	desktopConn       *grpc.ClientConn
 	desktopClient     pb.DesktopServiceClient
+	integrationClient pb.IntegrationServiceClient
 	jwtSecret         []byte // secret for creating jwts
 	argonParams       *params
 	MinPasswordLength int
@@ -343,7 +348,6 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 		base64.RawStdEncoding.EncodeToString(hash),
 	)
 
-
 	// Store in the database
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -362,7 +366,7 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	).Scan(&userId, &googleId, &passwordHash)
 
 	if err != sql.ErrNoRows {
-		
+
 		// Google ID exists without a password hash
 		if err == nil && googleId != "" && (passwordHash.String == "") {
 			err = tx.QueryRowContext(
@@ -719,7 +723,7 @@ func (s *authServer) startGRPCServer(grpcServer *grpc.Server) {
 //   - sets userstats on desktop
 //   - returns the user id, jwt on success
 func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.CreateOrUpdateGoogleUserRequest) (*pb.CreateOrUpdateGoogleUserResponse, error) {
-	
+
 	// Start a transaction
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -741,26 +745,26 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 			"SELECT id, email, name, google_id FROM users WHERE email = $1",
 			strings.ToLower(req.Email),
 		).Scan(&userId, &existingEmail, &existingName, &existingGoogleId)
-		
+
 		if err == nil {
 			userExists = true
 		} else if err != sql.ErrNoRows {
 			return nil, fmt.Errorf("database error when checking email: %v", err)
-		} 
+		}
 	}
-	
+
 	// If user not found by email or email not provided, try to find by google_id
 	if !userExists {
 		err = tx.QueryRowContext(ctx,
 			"SELECT id, email, name, google_id FROM users WHERE google_id = $1",
 			req.GoogleId,
 		).Scan(&userId, &existingEmail, &existingName, &existingGoogleId)
-		
+
 		if err == nil {
 			userExists = true
 		} else if err != sql.ErrNoRows {
 			return nil, fmt.Errorf("database error when checking google_id: %v", err)
-		} 
+		}
 	}
 
 	if userExists {
@@ -796,12 +800,12 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 			query := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d RETURNING id",
 				strings.Join(updates, ", "),
 				argCount)
-			
+
 			err = tx.QueryRowContext(ctx, query, args...).Scan(&userId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to update user: %v", err)
 			}
-		} 
+		}
 	} else {
 		// User doesn't exist, create a new one
 		if req.Email != "" {
@@ -820,7 +824,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 				req.GoogleId,
 			).Scan(&userId)
 		}
-		
+
 		if err != nil {
 			return nil, fmt.Errorf("failed to create user: %v", err)
 		}
@@ -833,7 +837,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 			log.Printf("Failed to set up userstore")
 		}
 		userCreated = true
-	
+
 	}
 
 	// Commit the transaction
@@ -857,10 +861,159 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 	}
 
 	return &pb.CreateOrUpdateGoogleUserResponse{
-		UserId: userId,
-		Token:  tokenString,
+		UserId:      userId,
+		Token:       tokenString,
 		UserCreated: userCreated,
 	}, nil
+}
+
+func (s *authServer) SSOLogin(ctx context.Context, req *pb.HttpSSOConnectRequest) (*pb.SSOConnectResponse, error) {
+	// Check if the environment variables are properly set
+	clientID := os.Getenv("GOOGLE_SSO_CLIENT_ID")
+	clientSecret := os.Getenv("GOOGLE_SSO_CLIENT_SECRET")
+	redirectURI := os.Getenv("GOOGLE_SSO_REDIRECT_URI")
+
+	if clientID == "" {
+		return nil, fmt.Errorf("server configuration error")
+	}
+
+	if clientSecret == "" {
+		return nil, fmt.Errorf("server configuration error")
+	}
+
+	if redirectURI == "" {
+		return nil, fmt.Errorf("server configuration error")
+	}
+
+	// Since SSOConnectRequest doesn't have a State field, we'll use a default state
+	ssoState := "sso:" + req.State
+
+	validateRes, err := s.integrationClient.ValidateOAuthState(ctx, &pb.ValidateOAuthStateRequest{
+		State: ssoState,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate SSO state: %v", err)
+	}
+
+	if !validateRes.Success {
+		return nil, fmt.Errorf(validateRes.ErrorDetails)
+	}
+
+	// Exchange the authorization code for tokens
+	tokenURL := "https://oauth2.googleapis.com/token"
+	data := url.Values{}
+	data.Set("code", req.AuthCode)
+	data.Set("client_id", os.Getenv("GOOGLE_SSO_CLIENT_ID"))
+	data.Set("client_secret", os.Getenv("GOOGLE_SSO_CLIENT_SECRET"))
+	data.Set("redirect_uri", os.Getenv("GOOGLE_SSO_REDIRECT_URI"))
+	data.Set("grant_type", "authorization_code")
+
+	// Create the HTTP request
+	httpReq, err := http.NewRequest("POST", tokenURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create token exchange request: %v", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// Send the request
+	resp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to exchange code for tokens: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Create a new reader with the body bytes for subsequent json.Decode
+	var bodyBytes []byte
+	bodyBytes, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		TokenType    string `json:"token_type"`
+		ExpiresIn    int    `json:"expires_in"`
+		RefreshToken string `json:"refresh_token"`
+		Scope        string `json:"scope"`
+	}
+
+	// Decode the token response
+	if err := json.Unmarshal(bodyBytes, &tokenResp); err != nil {
+		return nil, fmt.Errorf("failed to decode token response: %v", err)
+	}
+
+	// Check if we got an access token
+	if tokenResp.AccessToken == "" {
+		return nil, fmt.Errorf("failed to get access token")
+	}
+
+	// Use the access token to get the user's email from Google
+	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
+	httpReq, err = http.NewRequest("GET", userInfoURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create user info request: %v", err)
+	}
+
+	httpReq.Header.Set("Authorization", "Bearer "+tokenResp.AccessToken)
+	userInfoResp, err := http.DefaultClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user info: %v", err)
+	}
+	defer userInfoResp.Body.Close()
+
+	// Read and log the response body
+	bodyBytes, err = io.ReadAll(userInfoResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	// Check if the response is successful
+	if userInfoResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get user info")
+	}
+
+	// Create a new reader with the body bytes for subsequent decoding
+	userInfoResp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	var userInfo struct {
+		ID            string `json:"id"`
+		Email         string `json:"email"`
+		VerifiedEmail bool   `json:"verified_email"`
+		Name          string `json:"name"`
+		Picture       string `json:"picture"`
+	}
+
+	if err := json.NewDecoder(userInfoResp.Body).Decode(&userInfo); err != nil {
+		return nil, fmt.Errorf("failed to decode user info: %v", err)
+	}
+
+	// Check if we got the required user info
+	if userInfo.Email == "" {
+		return nil, fmt.Errorf("failed to get user email")
+	}
+
+	// Call authentication service to create/update Google user
+	userResponse, err := s.CreateOrUpdateGoogleUser(ctx, &pb.CreateOrUpdateGoogleUserRequest{
+		GoogleId: userInfo.ID,
+		Name:     userInfo.Name,
+		Email:    userInfo.Email,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create/update user: %v", err)
+	}
+
+	respBody := &pb.SSOConnectResponse{
+		Success:      true,
+		Message:      "Successfully authenticated with Google",
+		ErrorDetails: "",
+		Token:        userResponse.Token,
+		UserId:       userResponse.UserId,
+		UserCreated:  userResponse.UserCreated,
+	}
+
+	return respBody, nil
 }
 
 func main() {
@@ -890,6 +1043,21 @@ func main() {
 	if err := server.loadPasswordSettings(); err != nil {
 		log.Fatalf("Failed to initialize password encryption settings: %v", err)
 	}
+
+	// Connect to the integration service
+	integrationAddy, ok := os.LookupEnv("INTEGRATION_ADDRESS")
+	if !ok {
+		log.Fatal("failed to retrieve integration address for connection")
+	}
+	integrationConn, err := grpc.NewClient(
+		integrationAddy,
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTlsConfig)),
+	)
+	if err != nil {
+		log.Fatalf("Failed to establish connection with integration-service: %v", err)
+	}
+	defer integrationConn.Close()
+	server.integrationClient = pb.NewIntegrationServiceClient(integrationConn)
 
 	// start grpc server
 	grpcServer := server.createGRPCServer()
