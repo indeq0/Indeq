@@ -109,8 +109,7 @@ func (s *crawlingServer) retrieveAccessToken(ctx context.Context, userID string,
 }
 
 func (s *crawlingServer) StartInitialCrawler(ctx context.Context, req *pb.StartInitalCrawlerRequest) (*pb.StartInitalCrawlerResponse, error) {
-	platformStr := req.Platform
-	scope, err := ValidateAccessToken(req.AccessToken, platformStr)
+	scope, err := ValidateAccessToken(req.AccessToken, req.Platform)
 	if err != nil {
 		return &pb.StartInitalCrawlerResponse{
 			Success:      false,
@@ -118,8 +117,7 @@ func (s *crawlingServer) StartInitialCrawler(ctx context.Context, req *pb.StartI
 			ErrorDetails: err.Error(),
 		}, nil
 	}
-	err = s.NewCrawler(ctx, req.UserId, req.AccessToken, platformStr, scope)
-
+	err = s.NewCrawler(ctx, req.UserId, req.AccessToken, req.Platform, scope)
 	if err != nil {
 		return &pb.StartInitalCrawlerResponse{
 			Success:      false,
@@ -161,35 +159,6 @@ func (s *crawlingServer) NewCrawler(ctx context.Context, userID string, accessTo
 		return err
 	default:
 		return fmt.Errorf("unsupported platform: %s", platform)
-	}
-}
-
-// UpdateCrawler goes through specific provider and return the new retrieval token and processed files
-func (s *crawlingServer) UpdateCrawler(ctx context.Context, accessToken string, retrievalToken string, platform string, service string, userID string) (string, error) {
-	switch platform {
-	case "GOOGLE":
-		client := createGoogleOAuthClient(ctx, accessToken)
-		newRetrievalToken, err := s.UpdateCrawlGoogle(ctx, client, service, userID, retrievalToken)
-		if err != nil {
-			return "", fmt.Errorf("error updating Google crawl: %w", err)
-		}
-		return newRetrievalToken, nil
-	case "NOTION":
-		client := createNotionOAuthClient(ctx, accessToken)
-		newRetrievalToken, err := s.UpdateCrawlNotion(ctx, client, userID, retrievalToken)
-		if err != nil {
-			return "", fmt.Errorf("error updating Notion crawl: %w", err)
-		}
-		return newRetrievalToken, nil
-	case "MICROSOFT":
-		client := createMicrosoftOAuthClient(ctx, accessToken)
-		newRetrievalToken, err := s.UpdateCrawlMicrosoft(ctx, client, userID, retrievalToken)
-		if err != nil {
-			return "", fmt.Errorf("error updating Microsoft crawl: %w", err)
-		}
-		return newRetrievalToken, nil
-	default:
-		return "", fmt.Errorf("unsupported platform: %s", platform)
 	}
 }
 
@@ -313,6 +282,14 @@ func (s *crawlingServer) DeleteCrawlerData(ctx context.Context, req *pb.DeleteCr
 			Message: fmt.Sprintf("Database error deleting processing status: %v", err),
 		}, nil
 	}
+
+	if err := s.DeleteChunkMappingsForPlatform(ctx, req.UserId, req.Platform); err != nil {
+		return &pb.DeleteCrawlerDataResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to delete chunk mappings: %v", err),
+		}, nil
+	}
+
 	if err := s.deleteFilesFromVector(ctx, req.UserId, req.Platform); err != nil {
 		return &pb.DeleteCrawlerDataResponse{
 			Success: false,
@@ -644,15 +621,15 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatalf("DATABASE_URL environment variable is required")
-	}
-
 	// Load the TLS configuration values for integration service
 	clientTLSConfig, err := config.LoadClientTLSFromEnv("CRAWLING_CRT", "CRAWLING_KEY", "CA_CRT")
 	if err != nil {
 		log.Fatal("Error loading TLS client config for integration service")
+	}
+
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatalf("DATABASE_URL environment variable is required")
 	}
 
 	db, err := sql.Open("postgres", dbURL)

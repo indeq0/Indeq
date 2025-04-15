@@ -43,6 +43,21 @@ func (s *crawlingServer) MicrosoftCrawler(ctx context.Context, client *http.Clie
 	return nil
 }
 
+func (s *crawlingServer) UpdateCrawlMicrosoft(ctx context.Context, client *http.Client, userID, retrievalToken string) (string, error) {
+	files, delta, err := s.GetMicrosoftDriveFiles(ctx, client, userID, retrievalToken)
+	if err != nil {
+		return "", fmt.Errorf("failed to get Microsoft Drive files: %w", err)
+	}
+	err = s.ProcessMicrosoftDriveFiles(ctx, client, userID, files)
+	if err != nil {
+		return "", fmt.Errorf("failed to process Microsoft Drive files: %w", err)
+	}
+	if err := s.sendCrawlDoneSignal(ctx, userID, "MICROSOFT"); err != nil {
+		log.Printf("Failed to send crawl done signal for Microsoft services: %v", err)
+	}
+	return delta, nil
+}
+
 func (s *crawlingServer) GetMicrosoftDriveFiles(ctx context.Context, client *http.Client, userID string, retrievalToken string) (ListofFiles, string, error) {
 	var fileList ListofFiles
 	pageToken := ""
@@ -365,21 +380,6 @@ func extractPptxText(filePath string) (string, error) {
 	}
 
 	return text, nil
-}
-
-func (s *crawlingServer) UpdateCrawlMicrosoft(ctx context.Context, client *http.Client, userID, retrievalToken string) (string, error) {
-	files, delta, err := s.GetMicrosoftDriveFiles(ctx, client, userID, retrievalToken)
-	if err != nil {
-		return "", fmt.Errorf("failed to get Microsoft Drive files: %w", err)
-	}
-	err = s.ProcessMicrosoftDriveFiles(ctx, client, userID, files)
-	if err != nil {
-		return "", fmt.Errorf("failed to process Microsoft Drive files: %w", err)
-	}
-	if err := s.sendCrawlDoneSignal(ctx, userID, "MICROSOFT"); err != nil {
-		log.Printf("Failed to send crawl done signal for Microsoft services: %v", err)
-	}
-	return delta, nil
 }
 
 func RetrieveMicrosoftCrawler(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {

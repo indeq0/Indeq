@@ -467,7 +467,7 @@ func (s *crawlingServer) AddChunkMapping(ctx context.Context, userID string, ser
 	for i := 0; i < maxRetries; i++ {
 		shortKey, err := s.addChunkMappingInternal(ctx, userID, serverName, chunkID, resourceID, service)
 		if err == nil {
-			if err := s.verifyChunkMapping(ctx, userID, shortKey, resourceID); err != nil {
+			if err := s.verifyChunkMapping(ctx, userID, serverName, shortKey, resourceID); err != nil {
 				log.Printf("Warning: Chunk mapping verification failed (attempt %d): %v", i+1, err)
 				lastErr = err
 				continue
@@ -537,8 +537,8 @@ func (s *crawlingServer) addChunkMappingInternal(ctx context.Context, userID str
 }
 
 // verifyChunkMapping checks if a mapping exists in the database
-func (s *crawlingServer) verifyChunkMapping(ctx context.Context, userID string, shortKey string, resourceID string) error {
-	docID := fmt.Sprintf("%s_NOTION", userID)
+func (s *crawlingServer) verifyChunkMapping(ctx context.Context, userID string, serverName string, shortKey string, resourceID string) error {
+	docID := fmt.Sprintf("%s_%s", userID, serverName)
 	row := s.ChunkIDdb.Get(ctx, docID)
 	if row.Err() != nil {
 		return fmt.Errorf("failed to get document: %w", row.Err())
@@ -579,7 +579,7 @@ func (s *crawlingServer) DeleteChunkMappingsForFile(ctx context.Context, userID 
 	for i := 0; i < maxRetries; i++ {
 		err := s.deleteChunkMappingsInternal(ctx, userID, serverName, resourceID)
 		if err == nil {
-			if err := s.verifyMappingsDeleted(ctx, userID, resourceID); err != nil {
+			if err := s.verifyMappingsDeleted(ctx, userID, serverName, resourceID); err != nil {
 				log.Printf("Warning: Chunk mappings deletion verification failed (attempt %d): %v", i+1, err)
 				lastErr = err
 				continue
@@ -638,8 +638,8 @@ func (s *crawlingServer) deleteChunkMappingsInternal(ctx context.Context, userID
 }
 
 // verifyMappingsDeleted checks if all mappings for a resource were deleted
-func (s *crawlingServer) verifyMappingsDeleted(ctx context.Context, userID string, resourceID string) error {
-	docID := fmt.Sprintf("%s_NOTION", userID)
+func (s *crawlingServer) verifyMappingsDeleted(ctx context.Context, userID string, serverName string, resourceID string) error {
+	docID := fmt.Sprintf("%s_%s", userID, serverName)
 	row := s.ChunkIDdb.Get(ctx, docID)
 	if row.Err() != nil {
 		if strings.Contains(row.Err().Error(), "not_found") {
@@ -668,5 +668,30 @@ func (s *crawlingServer) verifyMappingsDeleted(ctx context.Context, userID strin
 		}
 	}
 
+	return nil
+}
+
+// DeleteChunkMappingsForPlatform deletes all chunk mappings for a user's platform from CouchDB
+func (s *crawlingServer) DeleteChunkMappingsForPlatform(ctx context.Context, userID string, platform string) error {
+	docID := fmt.Sprintf("%s_%s", userID, platform)
+	row := s.ChunkIDdb.Get(ctx, docID)
+	if row.Err() == nil {
+		// Document exists, get its revision and delete it
+		var doc map[string]interface{}
+		if err := row.ScanDoc(&doc); err != nil {
+			return fmt.Errorf("failed to scan CouchDB document: %v", err)
+		}
+		rev, ok := doc["_rev"].(string)
+		if !ok {
+			return fmt.Errorf("failed to get document revision from CouchDB")
+		}
+		_, err := s.ChunkIDdb.Delete(ctx, docID, rev)
+		if err != nil {
+			return fmt.Errorf("failed to delete chunk mappings from CouchDB: %v", err)
+		}
+	} else if !strings.Contains(row.Err().Error(), "not_found") {
+		// Return error only if it's not a "not found" error
+		return fmt.Errorf("failed to check CouchDB document: %v", row.Err())
+	}
 	return nil
 }

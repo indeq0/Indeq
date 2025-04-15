@@ -15,6 +15,8 @@ import (
 
 	pb "github.com/cc-0000/indeq/common/api"
 	"golang.org/x/oauth2"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -40,7 +42,6 @@ func (b *Block) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	// Pull out the block content dynamically
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
@@ -240,10 +241,12 @@ func (s *crawlingServer) UpdateCrawlNotion(ctx context.Context, client *http.Cli
 		filePath := file.File[0].Metadata.FilePath
 
 		if err := s.DeleteChunkMappingsForFile(ctx, userID, "NOTION", resourceID); err != nil {
+			log.Printf("Warning: failed to delete old chunk mappings for file %s: %v", resourceID, err)
 			continue
 		}
 
 		if err := UpsertProcessingStatus(ctx, s.db, userID, resourceID, "NOTION", false); err != nil {
+			log.Printf("Warning: failed to reset processing status for file %s: %v", resourceID, err)
 			continue
 		}
 
@@ -262,7 +265,7 @@ func (s *crawlingServer) UpdateCrawlNotion(ctx context.Context, client *http.Cli
 	}
 
 	if err := s.processNotionFiles(ctx, client, files); err != nil {
-		// Reset processing status for all files on error
+
 		for _, file := range files.Files {
 			if len(file.File) > 0 {
 				_ = UpsertProcessingStatus(ctx, s.db, userID, file.File[0].Metadata.ResourceID, "NOTION", false)
@@ -311,7 +314,7 @@ func (nc *NotionChunker) ProcessBlocks(blockResponse NotionPageResponse) []Proce
 			}
 		case "image", "video", "file", "pdf":
 			if url, ok := block.Content["url"].(string); ok {
-				blockContent += fmt.Sprintf("%s: %s\n", strings.Title(block.Type), url)
+				blockContent += fmt.Sprintf("%s: %s\n", cases.Title(language.English).String(block.Type), url)
 			}
 		case "divider":
 			blockContent += "Divider\n"
