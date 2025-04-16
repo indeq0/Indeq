@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as Card from '$lib/components/ui/card/index.js';
-  import { Input } from '$lib/components/ui/input/index.js';
+  import { InputOTP } from '$lib/components/ui/input-otp/index.js';   // NEW
+  import { Input } from '$lib/components/ui/input/index.js';          // keep if used elsewhere
   import { Button } from '$lib/components/ui/button/index.js';
   import { Label } from '$lib/components/ui/label/index.js';
   import { enhance } from '$app/forms';
@@ -11,6 +12,11 @@
   export let form;
   export let data: { context: string };
 
+  /* ---------------- OTP state ---------------- */
+  let otp = '';                          // value coming from <InputOTP>
+  $: hiddenCode = otp;                   // keep reactive in case user edits
+  /* ------------------------------------------- */
+
   let countdown = 0;
   let countdownInterval: NodeJS.Timeout;
 
@@ -18,35 +24,19 @@
     countdown = 30;
     countdownInterval = setInterval(() => {
       countdown--;
-      if (countdown <= 0) {
-        clearInterval(countdownInterval);
-      }
+      if (countdown <= 0) clearInterval(countdownInterval);
     }, 1000);
   }
 
-  onMount(() => {
-    return () => {
-      if (countdownInterval) clearInterval(countdownInterval);
-    };
-  });
+  onMount(() => () => countdownInterval && clearInterval(countdownInterval));
 
-  $: if (form?.message) {
-    toast.success(form.message);
-    startCountdown();
-  }
-
+  $: if (form?.message) { toast.success(form.message); startCountdown(); }
   $: if (form?.success && form.verifiedType) {
-    if (form.verifiedType === 'register') {
-      toast.success('Welcome aboard! 🎉');
-      goto('/chat');
-    } else if (form.verifiedType === 'forgot') {
-      goto('/reset-password');
-    }
+    form.verifiedType === 'register'
+      ? (toast.success('Welcome aboard!'), goto('/chat'))
+      : goto('/reset-password');
   }
-
-  $: if (form?.error) {
-    toast.error(form.error);
-  }
+  $: if (form?.error) toast.error(form.error);
 </script>
 
 <svelte:head>
@@ -60,25 +50,24 @@
       <Card.Header class="space-y-1">
         <Card.Title class="text-2xl">Enter your code</Card.Title>
         <Card.Description>
-          We've sent a 6-digit code to your email. Enter it below to
+          We've sent a 6‑digit code to your email. Enter it below to
           {data.context === 'register' ? ' complete your registration.' : ' reset your password.'}
         </Card.Description>
       </Card.Header>
 
-      <!-- Primary form for submitting the OTP -->
       <form method="POST" use:enhance>
         <Card.Content class="grid gap-4">
           <input type="hidden" name="type" value={data.context} />
+
           <div class="grid gap-2">
-            <Label for="code">Verification Code</Label>
-            <Input
-              id="code"
-              name="code"
-              type="text"
-              inputmode="numeric"
-              maxlength={6}
-              placeholder="123456"
-              required
+            <Label for="otp">Verification Code</Label>
+
+            <input id="otp" name="code" type="hidden" value={hiddenCode} />
+
+            <InputOTP
+              bind:value={otp}
+              length={6}
+              autoFocus
             />
           </div>
 
@@ -86,6 +75,7 @@
             <p class="text-destructive text-sm">{form.error}</p>
           {/if}
         </Card.Content>
+
         <Card.Footer class="flex flex-col gap-4 pb-2">
           <Button type="submit" class="w-full">Submit Code</Button>
         </Card.Footer>
