@@ -792,7 +792,7 @@ func main() {
 	}
 
 	// Load the TLS configuration values
-	tlsConfig, err := config.LoadServerTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY")
+	tlsConfig, err := config.LoadClientTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY", "CA_CRT")
 	if err != nil {
 		log.Fatal("Error loading TLS config for integration service")
 	}
@@ -888,15 +888,9 @@ func main() {
 		log.Fatalf("AUTH_ADDRESS environment variable is required")
 	}
 
-	// Load the TLS configuration values for auth service
-	integrationTLSConfig, err := config.LoadServerTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY")
-	if err != nil {
-		log.Fatal("Error loading TLS client config for auth service")
-	}
-
 	authConn, err := grpc.Dial(
 		authAddress,
-		grpc.WithTransportCredentials(credentials.NewTLS(integrationTLSConfig)),
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
 	)
 	if err != nil {
 		log.Fatalf("Failed to connect to auth service: %v", err)
