@@ -43,9 +43,7 @@
     } else if (data.redirectedFrom === 'register' && data.registering != 'true' ) {
       toast.info('You are already logged in. Please sign out to access the register page.');
     }
-    // Clean up the URL parameters
-    const url = new URL(window.location.href);
-    window.history.replaceState({}, '', url.toString());
+  
   });
   
   onDestroy(() => {

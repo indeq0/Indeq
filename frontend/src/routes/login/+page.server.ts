@@ -57,6 +57,14 @@ export const actions = {
         sameSite: 'lax'
       });
 
+      cookies.set("redirected_from", "login", {
+        httpOnly: true, // Prevent client-side access
+        secure: true, // Only send over HTTPS
+        path: '/', // Accessible across the entire app
+        maxAge: 5, // 5 seconds
+        sameSite: 'lax'
+      });
+
       if (response.error == null || response.error === '') {
         return { success: true };
       } else {

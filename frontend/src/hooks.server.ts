@@ -29,16 +29,7 @@ export const handle: Handle = async ({ event, resolve }) => {
   }
 
   // Redirect authenticated users away from login and register pages
-  if (isAuthenticated && authRoutes.includes(event.url.pathname) && event.request.method === 'GET') {
-    const redirectFrom = event.url.pathname === '/login' ? 'login' : 'register';
-    event.cookies.set("redirected_from", redirectFrom, {
-      httpOnly: true, // Prevent client-side access
-      secure: true, // Only send over HTTPS
-      path: '/', // Accessible across the entire app
-      maxAge: 5, // 5 seconds
-      sameSite: 'lax'
-    });
-    
+  if (isAuthenticated && authRoutes.includes(event.url.pathname) && event.request.method === 'GET') {  
     return redirect(302, `/chat`);
   }
 

@@ -43,7 +43,7 @@ export const GET = async ({ params, url, cookies }: RequestEvent) => {
           httpOnly: true,
           secure: true,
           path: '/',
-          maxAge: 60 * 60 * 24,
+          maxAge: 5,
           sameSite: 'lax'
         });
         return new Response(null, {

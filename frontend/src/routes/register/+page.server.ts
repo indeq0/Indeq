@@ -38,6 +38,14 @@ const login = async (email: string, password: string, cookies: Cookies) => {
     maxAge: 5,
     sameSite: 'lax'
   });
+
+  cookies.set("redirected_from", "register", {
+    httpOnly: true, // Prevent client-side access
+    secure: true, // Only send over HTTPS
+    path: '/', // Accessible across the entire app
+    maxAge: 5, // 5 seconds
+    sameSite: 'lax'
+  });
 };
 
 export const actions = {
