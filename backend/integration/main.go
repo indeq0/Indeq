@@ -792,13 +792,13 @@ func main() {
 	}
 
 	// Load the TLS configuration values
-	tlsConfig, err := config.LoadClientTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY", "CA_CRT")
+	tlsConfig, err := config.LoadServerTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY")
 	if err != nil {
 		log.Fatal("Error loading TLS config for integration service")
 	}
 
 	// Load the TLS configuration values for crawling service
-	crawlingTLSConfig, err := config.LoadClientTLSFromEnv("CRAWLING_CRT", "CRAWLING_KEY", "CA_CRT")
+	clientTLSConfig, err := config.LoadClientTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY", "CA_CRT")
 	if err != nil {
 		log.Fatal("Error loading TLS client config for crawling service")
 	}
@@ -811,7 +811,7 @@ func main() {
 
 	crawlingConn, err := grpc.NewClient(
 		crawlingAddress,
-		grpc.WithTransportCredentials(credentials.NewTLS(crawlingTLSConfig)),
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
 	)
 	if err != nil {
 		log.Fatalf("Failed to connect to crawling service: %v", err)
@@ -890,7 +890,7 @@ func main() {
 
 	authConn, err := grpc.Dial(
 		authAddress,
-		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
 	)
 	if err != nil {
 		log.Fatalf("Failed to connect to auth service: %v", err)
