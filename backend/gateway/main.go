@@ -572,7 +572,7 @@ func handleSSOLoginGenerator(clients *ServiceClients) http.HandlerFunc {
 		// Set up context
 		ctx := r.Context()
 
-		var httpRequest pb.HttpSSOConnectRequest
+		var httpRequest pb.SSOConnectRequest
 		if err := json.NewDecoder(r.Body).Decode(&httpRequest); err != nil {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
 			return

@@ -93,8 +93,9 @@ message GetAccessTokenResponse {
 
 // SSO Connect request and response messages
 message SSOConnectRequest {
-    Provider provider = 1;
+    string provider = 1;
     string auth_code = 2;
+    string state = 3;
 }
 
 message SSOConnectResponse {

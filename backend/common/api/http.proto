@@ -139,9 +139,3 @@ message HttpGetDesktopStatsResponse {
   bool is_crawling = 3;
   bool is_online = 4;
 }
-
-message HttpSSOConnectRequest {
-    string provider = 1;
-    string auth_code = 2;
-    string state = 3;
-}

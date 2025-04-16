@@ -4,7 +4,6 @@ option go_package = "github.com/cc-0000/indeq/common/api";
 
 package api;
 
-import "api/http.proto";
 import "api/integration.proto";
 
 service AuthenticationService {
@@ -13,7 +12,7 @@ service AuthenticationService {
     rpc Verify(VerifyRequest) returns (VerifyResponse);
     rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
     rpc CreateOrUpdateGoogleUser(CreateOrUpdateGoogleUserRequest) returns (CreateOrUpdateGoogleUserResponse);
-    rpc SSOLogin(HttpSSOConnectRequest) returns (SSOConnectResponse);
+    rpc SSOLogin(SSOConnectRequest) returns (SSOConnectResponse);
 }
 
 message LoginRequest {
@@ -68,4 +67,3 @@ message CreateOrUpdateGoogleUserResponse {
     string token = 2;    // JWT token for authentication
     bool user_created = 3;  // Indicates whether a new user was created
 }
-

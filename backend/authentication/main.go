@@ -867,7 +867,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 	}, nil
 }
 
-func (s *authServer) SSOLogin(ctx context.Context, req *pb.HttpSSOConnectRequest) (*pb.SSOConnectResponse, error) {
+func (s *authServer) SSOLogin(ctx context.Context, req *pb.SSOConnectRequest) (*pb.SSOConnectResponse, error) {
 	// Check if the environment variables are properly set
 	clientID := os.Getenv("GOOGLE_SSO_CLIENT_ID")
 	clientSecret := os.Getenv("GOOGLE_SSO_CLIENT_SECRET")
