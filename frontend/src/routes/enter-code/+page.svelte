@@ -8,15 +8,17 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
 
-  export let form;
-  export let data: { context: string };
+  export let data: { context: 'register' | 'forgot'; expired?: boolean };
+  export let form:
+    | { expired: true; context: 'register' | 'forgot' }
+    | { message?: string; success?: boolean; error?: string; verifiedType?: string }
+    | undefined;
 
   let otp = '';
   $: hiddenCode = otp;
 
   let countdown = 0;
   let countdownInterval: NodeJS.Timeout;
-
   function startCountdown() {
     countdown = 30;
     countdownInterval = setInterval(() => {
@@ -24,17 +26,41 @@
       if (countdown <= 0) clearInterval(countdownInterval);
     }, 1000);
   }
-
   onMount(() => () => countdownInterval && clearInterval(countdownInterval));
 
-  $: if (form?.message) { toast.success(form.message); startCountdown(); }
-  $: if (form?.success && form.verifiedType) {
-    form.verifiedType === 'register'
-      ? (toast.success('Welcome aboard!'), goto('/chat'))
-      : goto('/reset-password');
+  onMount(() => {
+    if (data.expired) {
+      toast.error('Your verification session expired. Please start again.');
+      const target = data.context === 'register' ? '/register' : '/login';
+      setTimeout(() => goto(target), 10);
+    }
+  });
+
+  $: if (form && 'expired' in form && form.expired) {
+    toast.error('Your verification session expired. Please start again.');
+    const target = form.context === 'register' ? '/register' : '/login';
+    setTimeout(() => goto(target), 10);
   }
-  $: if (form?.error) toast.error(form.error);
+
+  $: if (form && 'message' in form && form.message) {
+    toast.success(form.message);
+    startCountdown();
+  }
+
+  $: if (form && 'success' in form && form.success && 'verifiedType' in form) {
+    if (form.verifiedType === 'register') {
+      toast.success('Welcome aboard! 🎉');
+      goto('/chat');
+    } else {
+      goto('/reset-password');
+    }
+  }
+
+  $: if (form && 'error' in form && form.error) {
+    toast.error(form.error);
+  }
 </script>
+
 
 <svelte:head>
   <title>Enter Code | Indeq</title>
@@ -68,7 +94,7 @@
             />
           </div>
 
-          {#if form?.error}
+          {#if form && 'error' in form && form.error}
             <p class="text-destructive text-sm">{form.error}</p>
           {/if}
         </Card.Content>
