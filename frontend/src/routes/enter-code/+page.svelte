@@ -1,7 +1,6 @@
 <script lang="ts">
   import * as Card from '$lib/components/ui/card/index.js';
-  import { InputOTP } from '$lib/components/ui/input-otp/index.js';   // NEW
-  import { Input } from '$lib/components/ui/input/index.js';          // keep if used elsewhere
+  import { InputOTP } from '$lib/components/ui/input-otp/index.js';
   import { Button } from '$lib/components/ui/button/index.js';
   import { Label } from '$lib/components/ui/label/index.js';
   import { enhance } from '$app/forms';
@@ -12,10 +11,8 @@
   export let form;
   export let data: { context: string };
 
-  /* ---------------- OTP state ---------------- */
-  let otp = '';                          // value coming from <InputOTP>
-  $: hiddenCode = otp;                   // keep reactive in case user edits
-  /* ------------------------------------------- */
+  let otp = '';
+  $: hiddenCode = otp;
 
   let countdown = 0;
   let countdownInterval: NodeJS.Timeout;
