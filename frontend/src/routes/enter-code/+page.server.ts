@@ -3,31 +3,23 @@ import type { PageServerLoad } from './$types';
 import { redirect, fail } from '@sveltejs/kit';
 import { GO_BACKEND_URL } from '$env/static/private';
 
-/* ──────────────────────────────────────────
-   1.  LOAD  – runs on first navigation/refresh
-   ────────────────────────────────────────── */
 export const load: PageServerLoad = async ({ url, cookies }) => {
   const type = url.searchParams.get('type');
 
-  // guard against bogus or missing ?type
   if (type !== 'register' && type !== 'forgot') {
     throw redirect(303, '/register');
   }
 
-  /* ---------- token check ---------- */
   const token =
     type === 'register'
-      ? cookies.get('pendingRegisterToken') || cookies.get('jwt') // register also OK if already logged in
+      ? cookies.get('pendingRegisterToken') || cookies.get('jwt')
       : cookies.get('pendingForgotToken');
 
   const expired = !token;
 
-  return { context: type, expired };        // <─ pass flag to the page
+  return { context: type, expired };
 };
 
-/* ──────────────────────────────────────────
-   2. ACTION  – handles form submits
-   ────────────────────────────────────────── */
 export const actions = {
   default: async ({ request, cookies }) => {
     const data = await request.formData();
@@ -43,15 +35,13 @@ export const actions = {
       cookies.get('pendingRegisterToken') ||
       cookies.get('pendingForgotToken');
 
-    /* ---------- token missing ⇒ session expired ---------- */
     if (!token) {
-      return fail(419, {             // 419 = “authentication timeout”
+      return fail(419, {
         expired: true,
         context: type
       });
     }
 
-    /* ---------- RESEND ---------- */
     if (resend === 'true') {
       const r = await fetch(`${GO_BACKEND_URL}/api/resend-otp`, {
         method: 'POST',
@@ -74,7 +64,6 @@ export const actions = {
       };
     }
 
-    /* ---------- VERIFY ---------- */
     const v = await fetch(`${GO_BACKEND_URL}/api/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,7 +79,6 @@ export const actions = {
       return fail(400, { error: json.error });
     }
 
-    // registration succeeds ⇒ issue JWT & clear pending token
     if (type === 'register') {
       cookies.set('jwt', json.token, {
         path: '/',

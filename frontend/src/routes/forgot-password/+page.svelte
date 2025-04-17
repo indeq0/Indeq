@@ -8,10 +8,6 @@
   
     export let form;
   
-    // $: if (form?.success) {
-    //   // Could show a toast, but we typically just rely on redirect.
-    //   // toast.success('Password reset OTP sent to your email');
-    // }
     $: if (form?.error) {
       toast.error(form.error);
     }
