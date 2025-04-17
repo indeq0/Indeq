@@ -28,12 +28,12 @@
   }
 </script>
 
-<div class="min-h-screen bg-white dark:bg-gray-100">
+<div class="min-h-screen dark:bg-gray-100">
   <div class="max-w-4xl mx-auto px-4 py-8">
     <!-- Theme Section -->
     <section class="mb-12">
       <h2 class="text-xl font-medium mb-4 text-gray-900 dark:text-white">Appearance</h2>
-      <div class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+      <div class="bg-gray-200 dark:bg-gray-800 rounded-lg p-4">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-medium text-gray-900 dark:text-white">Theme</h3>

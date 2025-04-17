@@ -1,9 +1,13 @@
 <script lang="ts">
-  import '../app.css';
-  import { Toaster } from '$lib/components/ui/sonner';
-  import { injectAnalytics } from '@vercel/analytics/sveltekit';
-  import { PUBLIC_APP_ENV } from '$env/static/public';
-
+	import '../app.css';
+	import { Toaster } from "$lib/components/ui/sonner";
+    import AppSidebar from '$lib/components/sidebar/app-sidebar.svelte';    
+    import { injectAnalytics } from '@vercel/analytics/sveltekit'
+    import { page } from '$app/stores';
+    import { sidebarExpanded } from '$lib/stores/sidbarStore';
+    import { isValidRoute } from '$lib/config/sidebar-routes';
+    import { browser } from '$app/environment';
+    import { PUBLIC_APP_ENV } from '$env/static/public';
   let { children } = $props();
 
   const siteUrl = 'https://indeq.app';
@@ -45,4 +49,10 @@
 </svelte:head>
 
 <Toaster theme="light" />
-{@render children()}
+{#if browser && isValidRoute($page.url.pathname)}
+    <AppSidebar isExpanded={$sidebarExpanded}>
+        <main>{@render children()}</main>
+    </AppSidebar>
+{:else if browser}
+    <main>{@render children()}</main>
+{/if}

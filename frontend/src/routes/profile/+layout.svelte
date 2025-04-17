@@ -8,7 +8,7 @@
   }
 </script>
 
-<div class="w-full min-h-screen bg-white">
+<div class="w-full min-h-screen">
   <div class="max-w-4xl mx-auto px-4 py-8">
     <div class="flex flex-col w-full">
       <!-- Header Section -->
@@ -43,7 +43,7 @@
       </div>
       <hr />
       <!-- Content Section -->
-      <div class="w-full bg-white rounded-lg">
+      <div class="w-full rounded-lg">
         <main class="p-6">
           <slot />
         </main>

@@ -248,29 +248,13 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 	}
 	defer channel.Close()
 
-	// Create notification channels for when the client closes the channel --> cancel the context
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	notifyClose := channel.NotifyClose(make(chan *amqp.Error, 1))
-	notifyCancel := channel.NotifyCancel(make(chan string, 1))
-	go func(cancel context.CancelFunc) {
-		select {
-		case <-notifyClose:
-			cancel()
-		case <-notifyCancel:
-			cancel()
-		case <-ctx.Done():
-			return
-		}
-	}(cancel)
-
 	// create a rabbitmq queue to stream tokens to
 	queue, err := channel.QueueDeclare(
-		req.RequestId, // queue name
-		false,         // durable
-		true,          // delete when unused
-		false,         // exclusive
-		false,         // no-wait
+		req.ConversationId, // queue name
+		false,              // durable
+		true,               // delete when unused
+		false,              // exclusive
+		false,              // no-wait
 		amqp.Table{ // arguments
 			"x-expires": s.queueTTL,
 		},
@@ -320,28 +304,21 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 			return &pb.QueryResponse{}, fmt.Errorf("error streaming response from gemini: %w", err)
 		}
 
-		// Print each chunk as it arrives
 		for _, candidate := range resp.Candidates {
 			for _, part := range candidate.Content.Parts {
-				select {
-				case <-ctx.Done():
-					return &pb.QueryResponse{}, fmt.Errorf("early abort due to context cancellation")
-				default:
-					// check if the queue still exists
-					_, err := channel.QueueDeclarePassive(
-						req.RequestId, // queue name
-						false,         // durable
-						true,          // delete when unused
-						false,         // exclusive
-						false,         // no-wait
-						amqp.Table{ // arguments
-							"x-expires": s.queueTTL, // 5 minutes in milliseconds
-						},
-					)
-					if err != nil {
-						break // stop processing
-					}
-
+				// check if the queue still exists
+				_, err := channel.QueueDeclarePassive(
+					req.ConversationId, // queue name
+					false,              // durable
+					true,               // delete when unused
+					false,              // exclusive
+					false,              // no-wait
+					amqp.Table{ // arguments
+						"x-expires": s.queueTTL, // 5 minutes in milliseconds
+					},
+				)
+				if err == nil {
+					// only send tokens if the queue still exists
 					// create our token type
 					queueTokenMessage := &pb.QueryTokenMessage{
 						Type:  "token",
@@ -358,8 +335,8 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 						log.Printf("Error publishing message: %v", err)
 						continue
 					}
-					llmResponse += fmt.Sprintf("%v", part)
 				}
+				llmResponse += fmt.Sprintf("%v", part)
 			}
 		}
 	}

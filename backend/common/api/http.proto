@@ -16,7 +16,6 @@ message HttpQueryRequest {
 }
 
 message HttpQueryResponse {
-  string request_id = 1;
   string conversation_id = 2;
 }
 

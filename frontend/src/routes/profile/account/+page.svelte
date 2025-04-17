@@ -35,7 +35,7 @@
     <!-- Profile Section -->
     <section class="mb-12">
       <h2 class="text-xl font-medium mb-4 text-gray-900 dark:text-white">Appearance</h2>
-      <div class="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+      <div class="dark:bg-gray-800 rounded-lg p-4 shadow-sm">
         <!-- Profile Card -->
         <div class="flex items-center justify-between">
           <div class="space-y-1">
@@ -44,7 +44,7 @@
 
           <div class="flex items-center gap-6">
             <img
-              src="google.svg"
+              src="/google.svg"
               alt="Avatar"
               class="w-12 h-12 rounded-full ring-2 ring-gray-500 dark:ring-gray-700"
             />
@@ -134,7 +134,7 @@
               on:click={() => settings.update((s) => ({ ...s, markdownMode: !s.markdownMode }))}
             >
               <div
-                class="w-5 h-5 rounded-full bg-white transform transition-transform duration-200 ease-in-out
+                class="w-5 h-5 rounded-full transform transition-transform duration-200 ease-in-out
                        {$settings.markdownMode ? 'translate-x-6' : 'translate-x-1'}"
               ></div>
             </button>
@@ -153,7 +153,7 @@
               on:click={() => settings.update((s) => ({ ...s, enterToSubmit: !s.enterToSubmit }))}
             >
               <div
-                class="w-5 h-5 rounded-full bg-white transform transition-transform duration-200 ease-in-out
+                class="w-5 h-5 rounded-full transform transition-transform duration-200 ease-in-out
                        {$settings.enterToSubmit ? 'translate-x-6' : 'translate-x-1'}"
               ></div>
             </button>

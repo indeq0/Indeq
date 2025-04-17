@@ -12,10 +12,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	pb "github.com/cc-0000/indeq/common/api"
 	"github.com/cc-0000/indeq/common/config"
-	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -150,7 +150,7 @@ func handleGetQueryGenerator(clients *ServiceClients) http.HandlerFunc {
 		log.Println("received event stream request")
 
 		// Set up context with cancellation
-		ctx, cancel := context.WithCancel(r.Context())
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 		defer cancel()
 
 		// get the ttl
@@ -170,8 +170,17 @@ func handleGetQueryGenerator(clients *ServiceClients) http.HandlerFunc {
 
 		// Get the query parameters
 		queryParams := r.URL.Query()
-		incomingId := queryParams.Get("requestId")
-		requestId := fmt.Sprintf("%s-%s", verifyRes.UserId, incomingId)
+		conversationId := queryParams.Get("conversationId")
+
+		// verify that the conversationId belongs to the user
+		_, err = clients.queryClient.GetConversation(ctx, &pb.QueryGetConversationRequest{
+			UserId:         verifyRes.UserId,
+			ConversationId: conversationId,
+		})
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
 		// Handle SSE connection
 		allowedOrigins, ok := os.LookupEnv("ALLOWED_CLIENT_IP")
@@ -198,11 +207,11 @@ func handleGetQueryGenerator(clients *ServiceClients) http.HandlerFunc {
 		defer channel.Close()
 
 		queue, err := channel.QueueDeclare(
-			requestId, // name
-			false,     // durable
-			true,      // delete when unused
-			false,     // exclusive
-			false,     // no-wait
+			conversationId, // name
+			false,          // durable
+			true,           // delete when unused
+			false,          // exclusive
+			false,          // no-wait
 			amqp.Table{ // arguments
 				"x-expires": queueTTL,
 			},
@@ -267,10 +276,6 @@ func handlePostQueryGenerator(clients *ServiceClients) http.HandlerFunc {
 			Token: auth_token,
 		})
 
-		// Generate a per-request UUID
-		newRequestId := uuid.New().String()
-		userHashedRequestId := fmt.Sprintf("%s-%s", verifyRes.UserId, newRequestId)
-
 		// Grab the query
 		var queryRequest pb.HttpQueryRequest
 		if err := json.NewDecoder(r.Body).Decode(&queryRequest); err != nil {
@@ -315,7 +320,6 @@ func handlePostQueryGenerator(clients *ServiceClients) http.HandlerFunc {
 			defer cancel()
 			_, err := clients.queryClient.MakeQuery(detachedCtx, &pb.QueryRequest{
 				UserId:         verifyRes.UserId,
-				RequestId:      userHashedRequestId,
 				ConversationId: conversationId,
 				Query:          queryRequest.Query,
 			})
@@ -325,7 +329,6 @@ func handlePostQueryGenerator(clients *ServiceClients) http.HandlerFunc {
 		}()
 
 		httpResponse := &pb.HttpQueryResponse{
-			RequestId:      newRequestId,
 			ConversationId: conversationId,
 		}
 		w.Header().Set("Content-Type", "application/json")

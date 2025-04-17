@@ -5,10 +5,11 @@ import { writable } from 'svelte/store';
  * Add or remove fields as needed.
  */
 export interface User {
-  id: number | null;
-  username: string;
-  email: string;
-  // Add more fields if you wish, e.g. avatarUrl, role, etc.
+	id: number | null;
+	username: string;
+	email: string;
+	avatar: string;
+	// Add more fields if you wish, e.g. avatarUrl, role, etc.
 }
 
 /**
