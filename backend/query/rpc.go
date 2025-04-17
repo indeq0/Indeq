@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
 
 	"os"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/google/uuid"
-	"google.golang.org/api/iterator"
 
 	_ "github.com/go-kivik/kivik/v4/couchdb"
 )
@@ -163,27 +163,42 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 	if err != nil {
 		return &pb.QueryResponse{}, fmt.Errorf("failed to retrieve the ttl env variable: %w", err)
 	}
+	defaultModel, ok := os.LookupEnv("QUERY_DEFAULT_MODEL")
+	if !ok {
+		return &pb.QueryResponse{}, fmt.Errorf("failed to retrieve the default_model env variable")
+	}
+	if req.Model == "" {
+		req.Model = defaultModel
+	}
+	if !modelAllowed(req.Model) {
+		return &pb.QueryResponse{}, fmt.Errorf("model %s is not supported", req.Model)
+	}
 
 	// TODO: implement function calling for better filtering (dates, titles, etc.)
 	// TODO: implement query conversion for better searching
 
-	expandedQuery, err := s.expandQuery(ctx, req.Query, req.ConversationId)
+	expandedQuery, searchNeeded, err := s.expandQuery(ctx, req.Query, req.ConversationId)
 	if err != nil {
 		return &pb.QueryResponse{}, fmt.Errorf("failed to expand query: %w", err)
 	}
-	log.Print("got the expanded query: ", expandedQuery)
+	log.Print("got the expanded query: ", expandedQuery, "\n do we need to search? ", searchNeeded)
 
 	// fetch context associated with the query
-	topKChunksResponse, err := s.retrievalService.RetrieveTopKChunks(ctx, &pb.RetrieveTopKChunksRequest{
-		UserId:         req.UserId,
-		Prompt:         req.Query,
-		ExpandedPrompt: expandedQuery,
-		K:              int32(kVal),
-		Ttl:            uint32(ttlVal),
-	})
-	if err != nil {
-		topKChunksResponse = &pb.RetrieveTopKChunksResponse{
-			TopKChunks: []*pb.TextChunkMessage{},
+	topKChunksResponse := &pb.RetrieveTopKChunksResponse{
+		TopKChunks: []*pb.TextChunkMessage{},
+	}
+	if searchNeeded {
+		topKChunksResponse, err = s.retrievalService.RetrieveTopKChunks(ctx, &pb.RetrieveTopKChunksRequest{
+			UserId:         req.UserId,
+			Prompt:         req.Query,
+			ExpandedPrompt: expandedQuery,
+			K:              int32(kVal),
+			Ttl:            uint32(ttlVal),
+		})
+		if err != nil {
+			topKChunksResponse = &pb.RetrieveTopKChunksResponse{
+				TopKChunks: []*pb.TextChunkMessage{},
+			}
 		}
 	}
 
@@ -206,7 +221,7 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 
 	if len(chunksByFilePath) == 0 {
 		fullprompt += "Question: " + req.Query + "\n\n"
-		fullprompt += "Instructions: Provide a comprehensive answer to the question above, using the conversation history as context, as there are no excerpts to use."
+		fullprompt += "Instructions: Answer to the question above, using the conversation history (if present) as context."
 	} else {
 		excerptNumber := 1
 		for _, chunks := range chunksByFilePath {
@@ -223,23 +238,14 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 		}
 
 		fullprompt += "Question: " + req.Query + "\n\n"
-		fullprompt += "Instructions: Provide a comprehensive answer to the question above, using the given excerpts plus the conversation history if necessary, but falling back to your expert general knowledge if the excerpts are insufficient. Cite sources using the <Excerpt number> (with angle brackets!) of the document."
+		fullprompt += "Instructions: Provide a comprehensive answer to the question above, using the given excerpts plus the conversation history if necessary, but falling back to your expert general knowledge if the excerpts are insufficient. Cite excerpts using the <number_of_excerpt_in_question> (for example, when citing Excerpt: 1, use <1>) of the document."
 	}
 
 	// TODO: add the option to use more than 1 model
-
-	// start a gemini session and pull in the chat history
 	conversation, err := s.getConversation(ctx, req.ConversationId)
 	if err != nil {
 		return &pb.QueryResponse{}, fmt.Errorf("failed to get conversation: %w", err)
 	}
-	session := s.geminiFlash2ModelHeavy.StartChat()
-	session.History = s.convertConversationToSummarizedChatHistory(conversation)
-
-	// send the message to the llm
-	iter := session.SendMessageStream(ctx, genai.Text(fullprompt))
-	var llmResponse string
-	var sources []*pb.QuerySourceMessage
 
 	// Create a rabbitmq channel to stream the response
 	channel, err := s.rabbitMQConn.Channel()
@@ -263,82 +269,71 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 		return &pb.QueryResponse{}, fmt.Errorf("failed to create queue: %w", err)
 	}
 
+	var wg sync.WaitGroup
+	wg.Add(2)
+	modelError := new(error)
+	sourceError := new(error)
+	llmResponse := new(string)
+	reasoningResponse := new(string)
+	sources := new([]*pb.QuerySourceMessage)
+
+	// Start goroutine for the model
+	go func(modelError *error, llmResponse *string) {
+		defer wg.Done()
+
+		if req.Model == "gemini-2.0-flash" {
+			*modelError = s.sendToGemini(ctx, conversation, fullprompt, llmResponse, queue, channel)
+		} else if _, ok := deepInfraModels[req.Model]; ok {
+			*modelError = s.sendToOpenApiModel(ctx, req.Model, conversation, fullprompt, llmResponse, reasoningResponse, queue, channel)
+		} else if _, ok := openAiModels[req.Model]; ok {
+			*modelError = s.sendToOpenApiModel(ctx, req.Model, conversation, fullprompt, llmResponse, reasoningResponse, queue, channel)
+		}
+		// Add other model handlers as needed
+	}(modelError, llmResponse)
+
 	// send the sources first
-	excerptNumber := 1
-	for _, chunks := range chunksByFilePath {
-		// create a QueueSourceMessage for each file group
-		if len(chunks) == 0 {
-			continue
-		}
-		queueSourceMessage := &pb.QuerySourceMessage{
-			Type:          "source",
-			ExcerptNumber: int32(excerptNumber),
-			Title:         chunks[0].Metadata.Title[:len(chunks[0].Metadata.Title)-len(filepath.Ext(chunks[0].Metadata.FilePath))],
-			Extension:     strings.TrimPrefix(filepath.Ext(chunks[0].Metadata.FilePath), "."),
-			FilePath:      chunks[0].Metadata.FilePath,
-			FileUrl:       chunks[0].Metadata.FileUrl,
-		}
-		// TODO: implement the correct file extension for google sourced documents
-		if chunks[0].Metadata.Platform == pb.Platform_PLATFORM_GOOGLE {
-			queueSourceMessage.Extension = "Google"
-		}
-		byteMessage, err := json.Marshal(queueSourceMessage)
-		if err != nil {
-			return &pb.QueryResponse{}, fmt.Errorf("failed to marshal source message: %w", err)
-		}
+	go func(err *error, sources *[]*pb.QuerySourceMessage) {
+		defer wg.Done()
 
-		if err = s.sendToQueue(ctx, channel, queue.Name, byteMessage); err != nil {
-			return &pb.QueryResponse{}, fmt.Errorf("failed to publish message: %w", err)
-		}
-		sources = append(sources, queueSourceMessage)
-		excerptNumber++
-	}
-
-	// send the tokens
-	for {
-		resp, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			return &pb.QueryResponse{}, fmt.Errorf("error streaming response from gemini: %w", err)
-		}
-
-		for _, candidate := range resp.Candidates {
-			for _, part := range candidate.Content.Parts {
-				// check if the queue still exists
-				_, err := channel.QueueDeclarePassive(
-					req.ConversationId, // queue name
-					false,              // durable
-					true,               // delete when unused
-					false,              // exclusive
-					false,              // no-wait
-					amqp.Table{ // arguments
-						"x-expires": s.queueTTL, // 5 minutes in milliseconds
-					},
-				)
-				if err == nil {
-					// only send tokens if the queue still exists
-					// create our token type
-					queueTokenMessage := &pb.QueryTokenMessage{
-						Type:  "token",
-						Token: fmt.Sprintf("%v", part),
-					}
-					byteMessage, err := json.Marshal(queueTokenMessage)
-					if err != nil {
-						log.Printf("Error marshalling token message: %v", err)
-						continue
-					}
-
-					err = s.sendToQueue(ctx, channel, queue.Name, byteMessage)
-					if err != nil {
-						log.Printf("Error publishing message: %v", err)
-						continue
-					}
-				}
-				llmResponse += fmt.Sprintf("%v", part)
+		excerptNumber := 1
+		for _, chunks := range chunksByFilePath {
+			// create a QueueSourceMessage for each file group
+			if len(chunks) == 0 {
+				continue
 			}
+			queueSourceMessage := &pb.QuerySourceMessage{
+				Type:          "source",
+				ExcerptNumber: int32(excerptNumber),
+				Title:         chunks[0].Metadata.Title[:len(chunks[0].Metadata.Title)-len(filepath.Ext(chunks[0].Metadata.FilePath))],
+				Extension:     strings.TrimPrefix(filepath.Ext(chunks[0].Metadata.FilePath), "."),
+				FilePath:      chunks[0].Metadata.FilePath,
+				FileUrl:       chunks[0].Metadata.FileUrl,
+			}
+			// TODO: implement the correct file extension for google sourced documents
+			if chunks[0].Metadata.Platform == pb.Platform_PLATFORM_GOOGLE {
+				queueSourceMessage.Extension = "Google"
+			}
+			byteMessage, err := json.Marshal(queueSourceMessage)
+			if err != nil {
+				*modelError = fmt.Errorf("failed to marshal source message: %w", err)
+			}
+
+			if err = s.sendToQueue(ctx, channel, queue.Name, byteMessage); err != nil {
+				*modelError = fmt.Errorf("failed to publish message: %w", err)
+			}
+			*sources = append(*sources, queueSourceMessage)
+			excerptNumber++
 		}
+
+	}(sourceError, sources)
+
+	wg.Wait()
+
+	if *modelError != nil {
+		return &pb.QueryResponse{}, *modelError
+	}
+	if *sourceError != nil {
+		return &pb.QueryResponse{}, *sourceError
 	}
 
 	oldConversation, err := s.getConversation(ctx, req.ConversationId)
@@ -355,10 +350,14 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 	oldConversation.SummarizedMessages = append(oldConversation.SummarizedMessages, userMessage)
 
 	llmMessage := &pb.QueryMessage{
-		Text:      llmResponse,
+		Text:      *llmResponse,
 		Sender:    "model",
-		Sources:   sources,
+		Sources:   *sources,
 		Reasoning: []string{}, // TODO: implement reasoning for reasoning models
+	}
+	// if we have reasoning, add it to the message
+	if *reasoningResponse != "" {
+		llmMessage.Reasoning = strings.Split(*reasoningResponse, "\n")
 	}
 	oldConversation.FullMessages = append(oldConversation.FullMessages, llmMessage)
 	oldConversation.SummarizedMessages = append(oldConversation.SummarizedMessages, llmMessage)
@@ -412,34 +411,44 @@ func (s *queryServer) sendToQueue(ctx context.Context, channel *amqp.Channel, qu
 
 // func(context, query to expand, conversation id)
 //   - takes in a query and returns the expanded query that ideally contains better keywords for search
+//   - will return (..., FALSE, ...) if a search call is not needed
 //   - can be set to return the original query if the env variable QUERY_EXPANSION is set to false
-func (s *queryServer) expandQuery(ctx context.Context, query string, conversationID string) (string, error) {
+func (s *queryServer) expandQuery(ctx context.Context, query string, conversationID string) (string, bool, error) {
 	if os.Getenv("QUERY_EXPANSION") == "false" {
-		return query, nil
+		return query, true, nil // Return original query, indicate search is needed
 	}
 
-	fullprompt := "User Query: {" + query + "}\n\n" +
-		"Search Terms:"
-
-	// feed the old conversation to the model
+	// Get the conversation history
 	conversation, err := s.getConversation(ctx, conversationID)
 	if err != nil {
-		return query, fmt.Errorf("failed to get conversation: %w", err)
+		return query, true, fmt.Errorf("failed to get conversation: %w", err)
 	}
+
+	// Set up the model and session
 	session := s.geminiFlash2ModelLight.StartChat()
 	session.History = s.convertConversationToSummarizedChatHistory(conversation)
 
-	// send the new message
-	resp, err := session.SendMessage(ctx, genai.Text(fullprompt))
+	// Send the message
+	resp, err := session.SendMessage(ctx, genai.Text(query))
 	if err != nil {
-		return query, fmt.Errorf("failed to send message to google gemini: %w", err)
+		return query, true, fmt.Errorf("failed to send message to Google Gemini: %w", err)
 	}
-	var messageText string
+
+	// Process the response to check for function calls
 	if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
-		if textPart, ok := resp.Candidates[0].Content.Parts[0].(genai.Text); ok {
-			messageText = string(textPart)
+		if funcCall, ok := resp.Candidates[0].Content.Parts[0].(genai.FunctionCall); ok {
+			if action, ok := funcCall.Args["action"].(string); ok {
+				if action == "search" {
+					if expandedQuery, ok := funcCall.Args["expanded_query"].(string); ok {
+						return expandedQuery, true, nil
+					}
+					return query, true, fmt.Errorf("failed to get expanded query from function call, even when expected")
+				} else if action == "direct_answer" {
+					return query, false, nil
+				}
+			}
 		}
 	}
 
-	return messageText, nil
+	return query, false, fmt.Errorf("function call was not called")
 }

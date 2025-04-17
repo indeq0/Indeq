@@ -9,14 +9,14 @@
 
     //TODO: Will pull from userStore
     $: user = $userStore.user || {
-        username: "Guest",
-        email: "",
+        username: "Patrick",
+        email: "dev@indeq.app",
         avatar: ""
     };
 
 </script>
   
-<div class="py-2" class:px-3={$sidebarExpanded} class:px-2={!$sidebarExpanded}>
+<div class="py-2 shrink-0" class:px-3={$sidebarExpanded} class:px-2={!$sidebarExpanded}>
     <Popover.Root>
         <Popover.Trigger asChild let:builder>
             <Button
@@ -36,7 +36,7 @@
             </Button>
         </Popover.Trigger>
         <Popover.Content
-            class="w-[var(--radix-popover-trigger-width)] min-w-72 rounded-lg p-2"
+            class="w-[var(--radix-popover-trigger-width)] {$sidebarExpanded ? 'min-w-72' : 'min-w-48'} rounded-lg p-2"
             side={"top"}
             sideOffset={0}
         >

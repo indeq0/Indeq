@@ -29,10 +29,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${jwt}`
       },
-      body: JSON.stringify({
-        query,
-        conversation_id
-      })
+      body: JSON.stringify(body)
     });
 
     if (!goRes.ok) {
@@ -56,13 +53,13 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
  */
 export const GET: RequestHandler = async ({ url }) => {
   try {
-    const requestId = url.searchParams.get('requestId');
-    if (!requestId) {
-      throw error(400, 'No requestId provided');
+    const conversationId = url.searchParams.get('conversationId');
+    if (!conversationId) {
+      throw error(400, 'No conversationId provided');
     }
 
     // Open a connection to the Go server’s SSE endpoint
-    const goSseUrl = `${GO_BACKEND_URL}/api/query?requestId=${requestId}`;
+    const goSseUrl = `${GO_BACKEND_URL}/api/query?conversationId=${conversationId}`;
     const goResponse = await fetch(goSseUrl, {
       method: 'GET',
       headers: {

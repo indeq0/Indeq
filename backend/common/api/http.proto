@@ -13,6 +13,7 @@ message HttpHelloResponse {
 message HttpQueryRequest {
   string query = 1;
   string conversation_id = 2; // optional --> this will be blank if the user is creating a new conversation
+  string model = 3;
 }
 
 message HttpQueryResponse {

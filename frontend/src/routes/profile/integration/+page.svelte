@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Integration_Button from '../../../components/integration-card.svelte';
+  import Integration_Button from '$lib/components/integration/integration-card.svelte';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
@@ -70,27 +70,32 @@
   }
 </script>
 
-<main>
-  {#each integrations as integration}
-    <div class="card">
-      <div class="content">
-        <div class="logo-container">
-          <img src={integration.logo} alt="{integration.name} Logo" class="logo" />
+<div class="min-h-screen">
+  <div class="max-w-4xl mx-auto px-4 py-8">
+    <h2 class="text-xl font-medium mb-4 text-gray-900 dark:text-white">Integrations</h2>
+    <main>
+      {#each integrations as integration}
+        <div class="card">
+          <div class="content">
+            <div class="logo-container">
+              <img src={integration.logo} alt="{integration.name} Logo" class="logo" />
+            </div>
+            <div>
+              <span class="text-lg font-medium text-gray-900">{integration.name}</span>
+              <p class="text-gray-600 text-sm mt-1 leading-relaxed">
+                {integration.description}
+              </p>
+            </div>
+          </div>
+          <Integration_Button
+            company={integration.company}
+            isIntegrated={isProviderIntegrated(integration.company)}
+          />
         </div>
-        <div>
-          <span class="text-lg font-medium text-gray-900">{integration.name}</span>
-          <p class="text-gray-600 text-sm mt-1 leading-relaxed">
-            {integration.description}
-          </p>
-        </div>
-      </div>
-      <Integration_Button
-        company={integration.company}
-        isIntegrated={isProviderIntegrated(integration.company)}
-      />
-    </div>
-  {/each}
-</main>
+      {/each}
+    </main>
+  </div>
+</div>
 
 <style>
   main {
@@ -98,7 +103,7 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 1rem;
-    padding: 1rem;
+    width: 100%;
   }
 
   .card {

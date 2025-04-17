@@ -43,6 +43,12 @@ export function renderMarkdown(content: string) {
 
 // Function to render content with Markdown and LaTeX support
 export function renderContent(text: string) {
+  // Ensure text is a string and not undefined/null
+  if (!text) return '';
+  
+  // First process markdown
   const markdownRendered = renderMarkdown(text) as string;
+  
+  // Then process LaTeX
   return renderLatex(markdownRendered);
 }
