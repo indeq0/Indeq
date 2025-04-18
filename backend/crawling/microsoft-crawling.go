@@ -274,6 +274,8 @@ func (s *crawlingServer) ProcessMicrosoftDriveFiles(ctx context.Context, client 
 
 			if err := s.sendFileDoneSignal(ctx, file.File[0].Metadata.UserID, file.File[0].Metadata.FilePath, "MICROSOFT"); err != nil {
 				log.Printf("Error sending file done signal for %s: %v", file.File[0].Metadata.FilePath, err)
+				resultChan <- result{index: index, err: fmt.Errorf("error sending file done signal for %s: %w", file.File[0].Metadata.FilePath, err)}
+				return
 			}
 
 			resultChan <- result{index: index, file: processedFile}
@@ -309,6 +311,7 @@ func downloadFile(itemID, accessToken, outputPath string) error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+accessToken)
+	req.Header.Set("Accept", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -342,16 +345,6 @@ func extractDocxText(filePath string) (string, error) {
 }
 
 func extractPptxText(filePath string) (string, error) {
-	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0700)
-	if err != nil {
-		return "", fmt.Errorf("failed to open null device: %w", err)
-	}
-	defer devNull.Close()
-
-	originalLogger := log.Default().Writer()
-	log.Default().SetOutput(devNull)
-	defer log.Default().SetOutput(originalLogger)
-
 	pres, err := presentation.Open(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open PowerPoint file: %w", err)
@@ -382,162 +375,6 @@ func extractPptxText(filePath string) (string, error) {
 	return text, nil
 }
 
-func RetrieveMicrosoftCrawler(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
-	if metadata.Service == "MICROSOFT_DRIVE" {
-		return RetrieveFromMicrosoftDrive(ctx, client, metadata)
-	}
-	return TextChunkMessage{}, fmt.Errorf("unsupported service: %s", metadata.Service)
-}
-
-func RetrieveFromMicrosoftDrive(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
-	switch metadata.ResourceType {
-	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword":
-		return RetrieveFromDocx(ctx, client, metadata)
-	case "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/vnd.ms-powerpoint":
-		return RetrieveFromPptx(ctx, client, metadata)
-	default:
-		return TextChunkMessage{}, fmt.Errorf("unsupported resource type: %s", metadata.ResourceType)
-	}
-}
-
-func RetrieveFromDocx(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
-	chunkId := metadata.ChunkID
-
-	token, err := client.Transport.(*oauth2.Transport).Source.Token()
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to get access token: %w", err)
-	}
-
-	tempDir, err := os.MkdirTemp("", "microsoft-retrieval-*")
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to create temp directory: %w", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	localPath := filepath.Join(tempDir, filepath.Base(metadata.FilePath))
-	err = downloadFile(metadata.ResourceID, token.AccessToken, localPath)
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to download file: %w", err)
-	}
-
-	doc, err := document.Open(localPath)
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to open document: %w", err)
-	}
-
-	var allText string
-	for _, para := range doc.Paragraphs() {
-		for _, run := range para.Runs() {
-			allText += run.Text()
-		}
-		allText += "\n"
-	}
-
-	if chunkId == "" {
-		return TextChunkMessage{Metadata: metadata, Content: allText}, nil
-	}
-
-	var startOffset, endOffset int
-	_, err = fmt.Sscanf(chunkId, "startoffset:%d-endoffset:%d", &startOffset, &endOffset)
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("invalid chunk ID format: %w", err)
-	}
-
-	words := strings.Fields(allText)
-
-	if startOffset < 0 || endOffset >= len(words) || startOffset > endOffset {
-		return TextChunkMessage{}, fmt.Errorf("invalid offset range: start=%d, end=%d, total words=%d",
-			startOffset, endOffset, len(words))
-	}
-
-	chunkWords := words[startOffset : endOffset+1]
-	chunkText := strings.Join(chunkWords, " ")
-
-	return TextChunkMessage{Metadata: metadata, Content: chunkText}, nil
-}
-
-func RetrieveFromPptx(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
-	chunkId := metadata.ChunkID
-
-	token, err := client.Transport.(*oauth2.Transport).Source.Token()
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to get access token: %w", err)
-	}
-
-	// Create temp directory
-	tempDir, err := os.MkdirTemp("", "microsoft-retrieval-*")
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to create temp directory: %w", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	localPath := filepath.Join(tempDir, filepath.Base(metadata.FilePath))
-	// Download file
-	err = downloadFile(metadata.ResourceID, token.AccessToken, localPath)
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to download file: %w", err)
-	}
-
-	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0700)
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to open null device: %w", err)
-	}
-	defer devNull.Close()
-
-	originalLogger := log.Default().Writer()
-	log.Default().SetOutput(devNull)
-	defer log.Default().SetOutput(originalLogger)
-
-	pres, err := presentation.Open(localPath)
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to open PowerPoint file: %w", err)
-	}
-
-	var allText string
-	for _, slide := range pres.Slides() {
-		for _, placeholder := range slide.PlaceHolders() {
-			shape := placeholder.X()
-			if shape.TxBody != nil {
-				for _, para := range shape.TxBody.P {
-					for _, run := range para.EG_TextRun {
-						if run.R != nil {
-							allText += run.R.T
-						}
-					}
-					allText += "\n"
-				}
-			}
-		}
-		allText += "\n"
-	}
-
-	if allText == "" {
-		return TextChunkMessage{}, fmt.Errorf("no text content found in PowerPoint file")
-	}
-
-	if chunkId == "" {
-		return TextChunkMessage{Metadata: metadata, Content: allText}, nil
-	}
-
-	var startOffset, endOffset int
-	_, err = fmt.Sscanf(chunkId, "startoffset:%d-endoffset:%d", &startOffset, &endOffset)
-	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("invalid chunk ID format: %w", err)
-	}
-
-	words := strings.Fields(allText)
-
-	if startOffset < 0 || endOffset >= len(words) || startOffset > endOffset {
-		return TextChunkMessage{}, fmt.Errorf("invalid offset range: start=%d, end=%d, total words=%d",
-			startOffset, endOffset, len(words))
-	}
-
-	chunkWords := words[startOffset : endOffset+1]
-	chunkText := strings.Join(chunkWords, " ")
-
-	return TextChunkMessage{Metadata: metadata, Content: chunkText}, nil
-}
-
 func (s *crawlingServer) GetChunksFromMicrosoft(ctx context.Context, req *pb.GetChunksFromMicrosoftRequest) (*pb.GetChunksFromMicrosoftResponse, error) {
 	accessToken, err := s.retrieveAccessToken(ctx, req.UserId, "MICROSOFT")
 	if err != nil {
@@ -545,78 +382,210 @@ func (s *crawlingServer) GetChunksFromMicrosoft(ctx context.Context, req *pb.Get
 	}
 
 	client := createMicrosoftOAuthClient(ctx, accessToken)
-	type chunkResult struct {
-		chunk *pb.TextChunkMessage
-		err   error
+
+	fileGroups := make(map[string][]Metadata)
+	for _, pbMetadata := range req.Metadatas {
+		metadata := Metadata{
+			DateCreated:      pbMetadata.DateCreated.AsTime(),
+			DateLastModified: pbMetadata.DateLastModified.AsTime(),
+			UserID:           pbMetadata.UserId,
+			ResourceID:       pbMetadata.FileId,
+			ResourceType:     pbMetadata.ResourceType,
+			FileURL:          pbMetadata.FileUrl,
+			Title:            pbMetadata.Title,
+			ChunkID:          pbMetadata.ChunkId,
+			FilePath:         pbMetadata.FilePath,
+			Platform:         "MICROSOFT",
+			Service:          pbMetadata.Service,
+		}
+		fileGroups[metadata.ResourceID] = append(fileGroups[metadata.ResourceID], metadata)
 	}
+
 	numWorkers, err := strconv.Atoi(os.Getenv("CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS"))
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve the k value from the env variables: %w", err)
+		log.Printf("Warning: Could not get max workers from env, using default: %d", numWorkers)
 	}
-	resultChan := make(chan chunkResult, len(req.Metadatas))
+
+	var fileGroupList [][]Metadata
+	for _, group := range fileGroups {
+		fileGroupList = append(fileGroupList, group)
+	}
+
+	type chunkResult struct {
+		fileId   string
+		fileName string
+		chunks   []*pb.TextChunkMessage
+		err      error
+	}
+
 	var wg sync.WaitGroup
+	jobsChan := make(chan []Metadata, len(fileGroupList))
+	resultChan := make(chan chunkResult, len(fileGroupList))
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go func(start int) {
+		go func(workerId int) {
 			defer wg.Done()
-			for j := start; j < len(req.Metadatas); j += numWorkers {
-				metadata := req.Metadatas[j]
-				internalMetadata := Metadata{
-					DateCreated:      metadata.DateCreated.AsTime(),
-					DateLastModified: metadata.DateLastModified.AsTime(),
-					UserID:           metadata.UserId,
-					ResourceID:       metadata.FileId,
-					ResourceType:     metadata.ResourceType,
-					FileURL:          metadata.FileUrl,
-					Title:            metadata.Title,
-					ChunkID:          metadata.ChunkId,
-					FilePath:         metadata.FilePath,
-					Platform:         "MICROSOFT",
-					Service:          metadata.Service,
+			for metadatas := range jobsChan {
+				if len(metadatas) == 0 {
+					continue
 				}
 
-				chunk, err := RetrieveMicrosoftCrawler(ctx, client, internalMetadata)
+				fileMetadata := metadatas[0]
+				token, err := client.Transport.(*oauth2.Transport).Source.Token()
 				if err != nil {
 					resultChan <- chunkResult{
-						err: fmt.Errorf("error retrieving chunk for %s: %w", internalMetadata.FilePath, err),
+						fileId:   fileMetadata.ResourceID,
+						fileName: fileMetadata.Title,
+						err:      fmt.Errorf("failed to get access token: %w", err),
 					}
 					continue
 				}
 
-				protoChunk := &pb.TextChunkMessage{
-					Metadata: s.convertToProtoMetadata(chunk.Metadata),
-					Content:  chunk.Content,
-				}
-				resultChan <- chunkResult{chunk: protoChunk}
+				func() {
+					tempDir, err := os.MkdirTemp("", "microsoft-retrieval-*")
+					if err != nil {
+						resultChan <- chunkResult{
+							fileId:   fileMetadata.ResourceID,
+							fileName: fileMetadata.Title,
+							err:      fmt.Errorf("failed to create temp directory: %w", err),
+						}
+						return
+					}
+					defer os.RemoveAll(tempDir)
+
+					localPath := filepath.Join(tempDir, filepath.Base(fileMetadata.FilePath))
+					if err := downloadFile(fileMetadata.ResourceID, token.AccessToken, localPath); err != nil {
+						resultChan <- chunkResult{
+							fileId:   fileMetadata.ResourceID,
+							fileName: fileMetadata.Title,
+							err:      fmt.Errorf("failed to download file %s: %w", fileMetadata.FilePath, err),
+						}
+						return
+					}
+
+					chunks, err := processFileAndCreateChunks(localPath, fileMetadata, metadatas, s)
+					if err != nil {
+						resultChan <- chunkResult{
+							fileId:   fileMetadata.ResourceID,
+							fileName: fileMetadata.Title,
+							err:      err,
+						}
+						return
+					}
+
+					resultChan <- chunkResult{
+						fileId:   fileMetadata.ResourceID,
+						fileName: fileMetadata.Title,
+						chunks:   chunks,
+					}
+				}()
 			}
 		}(i)
 	}
+
+	for _, fileMetadatas := range fileGroupList {
+		jobsChan <- fileMetadatas
+	}
+	close(jobsChan)
 
 	go func() {
 		wg.Wait()
 		close(resultChan)
 	}()
 
-	var chunks []*pb.TextChunkMessage
-	var errs []error
+	var allChunks []*pb.TextChunkMessage
 	for result := range resultChan {
 		if result.err != nil {
-			errs = append(errs, result.err)
-			log.Printf("Warning: %v", result.err)
 			continue
 		}
-		if result.chunk != nil {
-			chunks = append(chunks, result.chunk)
-		}
-	}
-
-	if len(errs) > 0 {
-		log.Printf("Some chunks failed to retrieve: %v", errs)
+		allChunks = append(allChunks, result.chunks...)
 	}
 
 	return &pb.GetChunksFromMicrosoftResponse{
-		NumChunks: int64(len(chunks)),
-		Chunks:    chunks,
+		NumChunks: int64(len(allChunks)),
+		Chunks:    allChunks,
 	}, nil
+}
+
+func processFileAndCreateChunks(localPath string, fileMetadata Metadata, metadatas []Metadata, s *crawlingServer) ([]*pb.TextChunkMessage, error) {
+	var allText string
+
+	switch fileMetadata.ResourceType {
+	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword":
+		doc, err := document.Open(localPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open document %s: %w", fileMetadata.FilePath, err)
+		}
+
+		for _, para := range doc.Paragraphs() {
+			for _, run := range para.Runs() {
+				allText += run.Text()
+			}
+			allText += "\n"
+		}
+
+	case "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/vnd.ms-powerpoint":
+		pres, err := presentation.Open(localPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open PowerPoint file %s: %w", fileMetadata.FilePath, err)
+		}
+
+		for _, slide := range pres.Slides() {
+			for _, placeholder := range slide.PlaceHolders() {
+				shape := placeholder.X()
+				if shape.TxBody != nil {
+					for _, para := range shape.TxBody.P {
+						for _, run := range para.EG_TextRun {
+							if run.R != nil {
+								allText += run.R.T
+							}
+						}
+						allText += "\n"
+					}
+				}
+			}
+			allText += "\n"
+		}
+
+		if allText == "" {
+			return nil, fmt.Errorf("no text content found in PowerPoint file %s", fileMetadata.FilePath)
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported resource type: %s", fileMetadata.ResourceType)
+	}
+
+	words := strings.Fields(allText)
+	var chunks []*pb.TextChunkMessage
+
+	for _, metadata := range metadatas {
+		if metadata.ChunkID == "" {
+			chunks = append(chunks, &pb.TextChunkMessage{
+				Metadata: s.convertToProtoMetadata(metadata),
+				Content:  allText,
+			})
+			continue
+		}
+
+		var startOffset, endOffset int
+		_, err := fmt.Sscanf(metadata.ChunkID, "startoffset:%d-endoffset:%d", &startOffset, &endOffset)
+		if err != nil {
+			continue
+		}
+
+		if startOffset < 0 || endOffset >= len(words) || startOffset > endOffset {
+			continue
+		}
+
+		chunkWords := words[startOffset : endOffset+1]
+		chunkText := strings.Join(chunkWords, " ")
+
+		chunks = append(chunks, &pb.TextChunkMessage{
+			Metadata: s.convertToProtoMetadata(metadata),
+			Content:  chunkText,
+		})
+	}
+
+	return chunks, nil
 }

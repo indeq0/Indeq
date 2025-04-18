@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -345,7 +346,7 @@ func (sp *SlidesProcessor) ExtractSlidesChunk(presentation *slides.Presentation,
 	for slideIdx := startSlide; slideIdx <= endSlide; slideIdx++ {
 		slide, exists := slideMap[slideIdx]
 		if !exists {
-			fmt.Printf("Warning: Slide %d not found\n", slideIdx)
+			log.Printf("Warning: Slide %d not found\n", slideIdx)
 			continue
 		}
 		slideWords := make([]string, 0, 100)

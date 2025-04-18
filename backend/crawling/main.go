@@ -108,7 +108,7 @@ func (s *crawlingServer) retrieveAccessToken(ctx context.Context, userID string,
 	return response.AccessToken, nil
 }
 
-func (s *crawlingServer) StartInitialCrawler(ctx context.Context, req *pb.StartInitalCrawlerRequest) (*pb.StartInitalCrawlerResponse, error) {
+func (s *crawlingServer) StartInitalCrawler(ctx context.Context, req *pb.StartInitalCrawlerRequest) (*pb.StartInitalCrawlerResponse, error) {
 	scope, err := ValidateAccessToken(req.AccessToken, req.Platform)
 	if err != nil {
 		return &pb.StartInitalCrawlerResponse{
@@ -140,21 +140,21 @@ func (s *crawlingServer) NewCrawler(ctx context.Context, userID string, accessTo
 		client := createGoogleOAuthClient(ctx, accessToken)
 		err := s.GoogleCrawler(ctx, client, userID, scopes)
 		if err != nil {
-			log.Printf("Error in GoogleCrawler for user %s: %v", userID, err)
+			log.Printf("Error in GoogleCrawler: %v", err)
 		}
 		return err
 	case "NOTION":
 		client := createNotionOAuthClient(ctx, accessToken)
 		err := s.NotionCrawler(ctx, client, userID)
 		if err != nil {
-			log.Printf("Error in NotionCrawler for user %s: %v", userID, err)
+			log.Printf("Error in NotionCrawler: %v", err)
 		}
 		return err
 	case "MICROSOFT":
 		client := createMicrosoftOAuthClient(ctx, accessToken)
 		err := s.MicrosoftCrawler(ctx, client, userID)
 		if err != nil {
-			log.Printf("Error in MicrosoftCrawler for user %s: %v", userID, err)
+			log.Printf("Error in MicrosoftCrawler: %v", err)
 		}
 		return err
 	default:

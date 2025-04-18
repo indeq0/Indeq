@@ -91,7 +91,7 @@ func (s *crawlingServer) GoogleCrawler(ctx context.Context, client *http.Client,
 	return nil
 }
 
-// UpdateCrawlGoogle goes through specific service and return the new retrieval token and processed files
+// UpdateCrawlGoogle goes through specific service and return the new retrieval token
 func (s *crawlingServer) UpdateCrawlGoogle(ctx context.Context, client *http.Client, service string, userID string, retrievalToken string) (string, error) {
 	var newRetrievalToken string
 	var err error

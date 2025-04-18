@@ -21,9 +21,9 @@ type CrawlResult struct {
 }
 
 func (s *crawlingServer) CrawlGmail(ctx context.Context, client *http.Client, userID string) error {
-	retrievalToken, err := s.GetGoogleGmailList(ctx, client, userID)
+	retrievalToken, err := s.ProcessGmailMessages(ctx, client, userID)
 	if err != nil {
-		return fmt.Errorf("error retrieving Google Gmail file list: %w", err)
+		return fmt.Errorf("error processing Google Gmail messages: %w", err)
 	}
 
 	if err := StoreGoogleGmailToken(ctx, s.db, userID, retrievalToken); err != nil {
@@ -35,7 +35,7 @@ func (s *crawlingServer) CrawlGmail(ctx context.Context, client *http.Client, us
 func (s *crawlingServer) UpdateCrawlGmail(ctx context.Context, client *http.Client, userID string, retrievalToken string) (string, error) {
 	tokenUint64, err := strconv.ParseUint(retrievalToken, 10, 64)
 	if err != nil {
-		newToken, err := s.GetGoogleGmailList(ctx, client, userID)
+		newToken, err := s.ProcessGmailMessages(ctx, client, userID)
 		if err != nil {
 			return "", err
 		}
@@ -122,14 +122,14 @@ func (s *crawlingServer) CrawlGmailHistory(ctx context.Context, client *http.Cli
 	return retrievalToken, nil
 }
 
-func (s *crawlingServer) GetGoogleGmailList(ctx context.Context, client *http.Client, userID string) (string, error) {
+func (s *crawlingServer) ProcessGmailMessages(ctx context.Context, client *http.Client, userID string) (string, error) {
 	srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return "", fmt.Errorf("failed to create Gmail service: %w", err)
 	}
 	workers, err := strconv.Atoi(os.Getenv("CRAWLING_GMAIL_MAX_WORKERS"))
 	if err != nil {
-		return "", fmt.Errorf("failed to retrieve the k value from the env variables: %w", err)
+		return "", fmt.Errorf("failed to retrieve the gmail max workers value from the env variables: %w", err)
 	}
 
 	const pageSize = 1000

@@ -21,6 +21,7 @@ import (
 )
 
 const NotionVersion = "2022-06-28"
+const NotionAPIPageSize = 100
 
 // Notion API types
 type Block struct {
@@ -368,20 +369,20 @@ func (nc *NotionChunker) GenerateChunks(pageResponse NotionObject, userID, pageT
 		var startBlock, endBlock *ProcessedBlock
 		var startWordOffset, endWordOffset int
 
-		for _, block := range nc.Blocks {
-			if block.StartOffset <= chunkStart &&
-				block.StartOffset+block.WordCount > chunkStart {
-				startBlock = &block
-				startWordOffset = chunkStart - block.StartOffset
+		for i := range nc.Blocks {
+			if nc.Blocks[i].StartOffset <= chunkStart &&
+				nc.Blocks[i].StartOffset+nc.Blocks[i].WordCount > chunkStart {
+				startBlock = &nc.Blocks[i]
+				startWordOffset = chunkStart - nc.Blocks[i].StartOffset
 				break
 			}
 		}
 
-		for _, block := range nc.Blocks {
-			if block.StartOffset < chunkEnd &&
-				block.StartOffset+block.WordCount >= chunkEnd {
-				endBlock = &block
-				endWordOffset = chunkEnd - block.StartOffset
+		for i := range nc.Blocks {
+			if nc.Blocks[i].StartOffset < chunkEnd &&
+				nc.Blocks[i].StartOffset+nc.Blocks[i].WordCount >= chunkEnd {
+				endBlock = &nc.Blocks[i]
+				endWordOffset = chunkEnd - nc.Blocks[i].StartOffset
 				break
 			}
 		}
@@ -446,7 +447,7 @@ func (s *crawlingServer) NotionSearch(ctx context.Context, client *http.Client, 
 				"direction": "ascending",
 				"timestamp": "last_edited_time",
 			},
-			"page_size": 100,
+			"page_size": NotionAPIPageSize,
 		}
 		if nextCursor != "" {
 			searchBody["start_cursor"] = nextCursor
@@ -474,20 +475,28 @@ func (s *crawlingServer) NotionSearch(ctx context.Context, client *http.Client, 
 		}
 		defer resp.Body.Close()
 
+		if resp.StatusCode != http.StatusOK {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return files, retrievalToken, fmt.Errorf("request failed with status %d and error reading body: %w", resp.StatusCode, err)
+			}
+			return files, retrievalToken, fmt.Errorf("request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
+		}
+
 		var searchResp NotionSearchResponse
 		if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
 			return files, retrievalToken, fmt.Errorf("failed to decode search response: %w", err)
 		}
 		for _, page := range searchResp.Results {
 			if retrievalToken != "" && !initial {
-				retrivalTime, err := time.Parse(time.RFC3339, retrievalToken)
+				retrievedTime, err := time.Parse(time.RFC3339, retrievalToken)
 				if err != nil {
 					return files, retrievalToken, fmt.Errorf("failed to parse retrieval token: %w", err)
 				}
-				if page.LastEditedTime.Before(retrivalTime) {
+				if page.LastEditedTime.Before(retrievedTime) {
 					continue
 				}
-				if page.LastEditedTime.Equal(retrivalTime) {
+				if page.LastEditedTime.Equal(retrievedTime) {
 					continue
 				}
 			}
@@ -796,7 +805,7 @@ func (s *crawlingServer) processNotionDatabase(ctx context.Context, client *http
 	rowCounter := 0
 	for {
 		queryBody := map[string]interface{}{
-			"page_size": 100,
+			"page_size": NotionAPIPageSize,
 		}
 		if nextCursor != "" {
 			queryBody["start_cursor"] = nextCursor
@@ -826,14 +835,23 @@ func (s *crawlingServer) processNotionDatabase(ctx context.Context, client *http
 			fmt.Println("Error executing query request:", err)
 			break
 		}
+		defer queryResp.Body.Close()
+
+		if queryResp.StatusCode != http.StatusOK {
+			bodyBytes, err := io.ReadAll(queryResp.Body)
+			if err != nil {
+				fmt.Printf("request failed with status %d and error reading body: %v\n", queryResp.StatusCode, err)
+				break
+			}
+			fmt.Printf("request failed with status %d: %s\n", queryResp.StatusCode, string(bodyBytes))
+			break
+		}
 
 		var dbQueryResponse NotionDatabaseResponse
 		if err := json.NewDecoder(queryResp.Body).Decode(&dbQueryResponse); err != nil {
 			fmt.Println("Error decoding query response:", err)
-			queryResp.Body.Close()
 			break
 		}
-		queryResp.Body.Close()
 
 		for _, row := range dbQueryResponse.Results {
 			rowCounter++
@@ -961,10 +979,10 @@ func extractRichTextValue(richTextInterface interface{}) string {
 // RetrieveNotionCrawler retrieves specific chunks based on metadata
 func RetrieveNotionCrawler(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
 	if metadata.ResourceType == "page" {
-		return retriveNotionPage(ctx, client, metadata)
+		return retrieveNotionPage(ctx, client, metadata)
 	}
 	if metadata.ResourceType == "database" {
-		return retriveNotionDatabase(ctx, client, metadata)
+		return retrieveNotionDatabase(ctx, client, metadata)
 	}
 	return TextChunkMessage{}, fmt.Errorf("unsupported resource type: %s", metadata.ResourceType)
 }
@@ -1090,8 +1108,8 @@ func (s *crawlingServer) GetChunksFromNotion(ctx context.Context, req *pb.GetChu
 	}, nil
 }
 
-// retriveNotionPage retrieves a specific chunk from a Notion page
-func retriveNotionPage(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+// retrieveNotionPage retrieves a specific chunk from a Notion page
+func retrieveNotionPage(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
 	startBlockID, startOffset, endBlockID, endOffset, err := parseChunkID(metadata.ChunkID)
 	if err != nil {
 		return TextChunkMessage{}, fmt.Errorf("failed to parse chunk ID: %w", err)
@@ -1182,8 +1200,8 @@ func retriveNotionPage(ctx context.Context, client *http.Client, metadata Metada
 	return chunk, nil
 }
 
-// retriveNotionDatabase retrieves a specific chunk from a Notion database
-func retriveNotionDatabase(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+// retrieveNotionDatabase retrieves a specific chunk from a Notion database
+func retrieveNotionDatabase(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
 	startBlockID, startOffset, endBlockID, endOffset, err := parseChunkID(metadata.ChunkID)
 	if err != nil {
 		return TextChunkMessage{}, fmt.Errorf("failed to parse chunk ID: %w", err)
@@ -1266,6 +1284,14 @@ func retriveNotionDatabase(ctx context.Context, client *http.Client, metadata Me
 		return TextChunkMessage{}, fmt.Errorf("failed to execute query request: %w", err)
 	}
 	defer queryResp.Body.Close()
+
+	if queryResp.StatusCode != http.StatusOK {
+		bodyBytes, err := io.ReadAll(queryResp.Body)
+		if err != nil {
+			return TextChunkMessage{}, fmt.Errorf("request failed with status %d and error reading body: %w", queryResp.StatusCode, err)
+		}
+		return TextChunkMessage{}, fmt.Errorf("request failed with status %d: %s", queryResp.StatusCode, string(bodyBytes))
+	}
 
 	var dbQueryResponse NotionDatabaseResponse
 	if err := json.NewDecoder(queryResp.Body).Decode(&dbQueryResponse); err != nil {

@@ -8,7 +8,7 @@ import "api/kafka.proto";
 
 // CrawlingService definition
 service CrawlingService {
-    rpc StartInitialCrawler (StartInitalCrawlerRequest) returns (StartInitalCrawlerResponse);
+    rpc StartInitalCrawler (StartInitalCrawlerRequest) returns (StartInitalCrawlerResponse);
     rpc ManualCrawler (ManualCrawlerRequest) returns (ManualCrawlerResponse);
     rpc DeleteCrawlerData (DeleteCrawlerDataRequest) returns (DeleteCrawlerDataResponse);
     rpc GetChunksFromGoogle (GetChunksFromGoogleRequest) returns (GetChunksFromGoogleResponse);

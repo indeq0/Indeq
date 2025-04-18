@@ -609,7 +609,7 @@ func (s *integrationServer) ConnectIntegration(ctx context.Context, req *pb.Conn
 			Platform:    providerStr,
 			AccessToken: tokenRes.AccessToken,
 		}
-		_, err = s.crawlingService.StartInitialCrawler(bgCtx, crawlerReq)
+		_, err = s.crawlingService.StartInitalCrawler(bgCtx, crawlerReq)
 		if err != nil {
 			log.Printf("Failed to start initial crawler: %v", err)
 		}

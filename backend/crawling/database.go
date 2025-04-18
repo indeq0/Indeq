@@ -112,8 +112,22 @@ const (
 func setupDatabase(db *sql.DB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			// If an error occurred, rollback the transaction
+			if rbErr := tx.Rollback(); rbErr != nil {
+				log.Printf("tx rollback failed: %v", rbErr)
+			}
+		}
+	}()
+
 	// create retrievalTokens table
-	_, err := db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
         CREATE TABLE IF NOT EXISTS retrievalTokens (
             id SERIAL PRIMARY KEY,
             user_id UUID NOT NULL,
@@ -127,17 +141,17 @@ func setupDatabase(db *sql.DB) error {
         );
     `)
 	if err != nil {
-		return fmt.Errorf("failed to create retrievalTokens table: %v", err)
+		return fmt.Errorf("failed to create retrievalTokens table: %v", err) // Error will trigger rollback
 	}
-	_, err = db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS user_service_idx ON retrievalTokens (user_id, service);
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to create user_service index: %v", err)
+		return fmt.Errorf("failed to create user_service index: %v", err) // Error will trigger rollback
 	}
 
 	// Create processing_status table
-	_, err = db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS processing_status (
 			id SERIAL PRIMARY KEY,
 			user_id UUID NOT NULL,
@@ -151,14 +165,19 @@ func setupDatabase(db *sql.DB) error {
 		);
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to create processing_status table: %v", err)
+		return fmt.Errorf("failed to create processing_status table: %v", err) // Error will trigger rollback
 	}
 
-	_, err = db.ExecContext(ctx, `
+	_, err = tx.ExecContext(ctx, `
 		CREATE INDEX IF NOT EXISTS processing_status_user_idx ON processing_status (user_id);
 	`)
 	if err != nil {
-		return fmt.Errorf("failed to create processing_status_user index: %v", err)
+		return fmt.Errorf("failed to create processing_status_user index: %v", err) // Error will trigger rollback
+	}
+
+	// Commit the transaction if all operations succeed
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	fmt.Println("Database setup completed: retrieval_tokens and processing_status tables are ready.")
@@ -268,18 +287,8 @@ func UpsertRetrievalToken(ctx context.Context, db *sql.DB, token RetrievalToken)
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		}
-	}()
-
 	now := time.Now()
-	if _, err = tx.ExecContext(ctx, insertRetrievalTokenQuery,
+	_, err := db.ExecContext(ctx, insertRetrievalTokenQuery,
 		token.UserID,
 		token.Platform,
 		token.Service,
@@ -287,12 +296,9 @@ func UpsertRetrievalToken(ctx context.Context, db *sql.DB, token RetrievalToken)
 		now,
 		now,
 		token.RequiresUpdate,
-	); err != nil {
+	)
+	if err != nil {
 		return fmt.Errorf("failed to upsert retrieval token: %w", err)
-	}
-
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
 	return nil
@@ -308,7 +314,13 @@ func DeleteRetrievalTokens(ctx context.Context, db *sql.DB, userID, platform str
 	if err != nil {
 		return 0, fmt.Errorf("failed to delete retrieval tokens: %w", err)
 	}
-	return result.RowsAffected()
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	return rowsAffected, nil
 }
 
 // GetRetrievalTokens gets all retrieval tokens for a user
@@ -317,7 +329,17 @@ func GetRetrievalTokens(ctx context.Context, db *sql.DB, userID string) ([]Retri
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	rows, err := db.QueryContext(ctx, getRetrievalTokensQuery, userID)
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	rows, err := tx.QueryContext(ctx, getRetrievalTokensQuery, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query retrieval tokens: %w", err)
 	}
@@ -332,12 +354,31 @@ func GetRetrievalTokens(ctx context.Context, db *sql.DB, userID string) ([]Retri
 		}
 		tokens = append(tokens, token)
 	}
-	return tokens, rows.Err()
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating retrieval token rows: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return tokens, nil
 }
 
 // GetOutdatedTokens gets all tokens that need updating
 func GetOutdatedTokens(ctx context.Context, db *sql.DB) ([]RetrievalToken, error) {
-	rows, err := db.QueryContext(ctx, getOutdatedTokensQuery)
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	rows, err := tx.QueryContext(ctx, getOutdatedTokensQuery)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query outdated tokens: %w", err)
 	}
@@ -357,7 +398,16 @@ func GetOutdatedTokens(ctx context.Context, db *sql.DB) ([]RetrievalToken, error
 		token.RequiresUpdate = true
 		tokens = append(tokens, token)
 	}
-	return tokens, rows.Err()
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating outdated token rows: %w", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return tokens, nil
 }
 
 // UpsertProcessingStatus updates or inserts a processing status for a resource
@@ -372,13 +422,14 @@ func UpsertProcessingStatus(ctx context.Context, db *sql.DB, userID string, reso
 		resourceID,
 		platform,
 		isProcessed,
-		false,
+		false, // crawling_done is false initially or on upsert
 		now,
 		now,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to upsert processing status: %w", err)
 	}
+
 	return nil
 }
 
@@ -398,6 +449,7 @@ func UpdateCrawlingDone(ctx context.Context, db *sql.DB, userID string, platform
 	if err != nil {
 		return fmt.Errorf("failed to update crawling done status: %w", err)
 	}
+
 	return nil
 }
 
@@ -407,7 +459,17 @@ func GetProcessingStatus(ctx context.Context, db *sql.DB, userID string, platfor
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	rows, err := db.QueryContext(ctx, getProcessingStatusQuery, userID, platform)
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	rows, err := tx.QueryContext(ctx, getProcessingStatusQuery, userID, platform)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to query processing status: %w", err)
 	}
@@ -429,6 +491,10 @@ func GetProcessingStatus(ctx context.Context, db *sql.DB, userID string, platfor
 		return nil, false, fmt.Errorf("error iterating processing status rows: %w", err)
 	}
 
+	if err = tx.Commit(); err != nil {
+		return nil, false, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	return processedFiles, crawlingDone, nil
 }
 
@@ -442,6 +508,7 @@ func DeleteProcessingStatus(ctx context.Context, db *sql.DB, userID string, plat
 	if err != nil {
 		return fmt.Errorf("failed to delete processing status: %w", err)
 	}
+
 	return nil
 }
 
@@ -519,9 +586,43 @@ func (s *crawlingServer) addChunkMappingInternal(ctx context.Context, userID str
 				return "", fmt.Errorf("failed to scan existing document: %w", err)
 			}
 
-			mappings, _ := existingDoc["chunkMappings"].([]interface{})
-			mappings = append(mappings, newMapping)
-			existingDoc["chunkMappings"] = mappings
+			originalMappings, _ := existingDoc["chunkMappings"].([]interface{})
+
+			mappingMap := make(map[string]map[string]interface{})
+
+			for _, mapping := range originalMappings {
+				if m, ok := mapping.(map[string]interface{}); ok {
+					if chunkID, ok := m["chunkId"].(string); ok {
+						if resourceID, ok := m["resourceId"].(string); ok {
+							key := fmt.Sprintf("%s:%s", chunkID, resourceID)
+							mappingMap[key] = m
+						}
+					}
+				}
+			}
+
+			key := fmt.Sprintf("%s:%s", chunkID, resourceID)
+			if existingMapping, exists := mappingMap[key]; exists {
+				existingMapping["lastUsed"] = now
+				shortKey = existingMapping["shortKey"].(string)
+			} else {
+				newMappingMap := map[string]interface{}{
+					"shortKey":   shortKey,
+					"chunkId":    chunkID,
+					"service":    service,
+					"resourceId": resourceID,
+					"createdAt":  now,
+					"lastUsed":   now,
+				}
+				mappingMap[key] = newMappingMap
+			}
+
+			newMappings := make([]interface{}, 0, len(mappingMap))
+			for _, m := range mappingMap {
+				newMappings = append(newMappings, m)
+			}
+
+			existingDoc["chunkMappings"] = newMappings
 			existingDoc["updatedAt"] = now
 
 			_, err = s.ChunkIDdb.Put(ctx, docID, existingDoc)
