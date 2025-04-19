@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount, afterUpdate } from 'svelte';
     import { SendIcon } from "svelte-feather-icons";
     import { desktopIntegration } from '$lib/stores/desktopIntegration';
     import { isIntegrated } from "$lib/utils/integration";
@@ -9,7 +9,22 @@
     export let integrations = [];
     
     let userQuery = '';
+    let textareaElement: HTMLTextAreaElement;
     const dispatch = createEventDispatcher();
+    
+    onMount(() => {
+      // Set focus when the component is mounted
+      if (textareaElement) {
+        textareaElement.focus();
+      }
+    });
+    
+    afterUpdate(() => {
+      // Maintain focus after any state changes or updates
+      if (textareaElement && document.activeElement !== textareaElement) {
+        textareaElement.focus();
+      }
+    });
     
     function handleSubmit() {
       if (!userQuery.trim()) return;
@@ -19,10 +34,10 @@
       
       // Reset textarea height
       setTimeout(() => {
-        const textarea = document.querySelector('textarea');
-        if (textarea) {
-          textarea.style.height = 'auto';
-          textarea.rows = 1;
+        if (textareaElement) {
+          textareaElement.style.height = 'auto';
+          textareaElement.rows = 1;
+          textareaElement.focus();
         }
       }, 0);
     }
@@ -32,6 +47,7 @@
     <div class="w-full max-w-3xl p-4 pt-0">
       <div class="relative bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
         <textarea
+          bind:this={textareaElement}
           bind:value={userQuery}
           placeholder="Ask me anything..."
           class="w-full px-4 py-3 pb-14 focus:outline-none prose prose-lg resize-none overflow-y-auto textarea-scrollbar border-none"
@@ -63,7 +79,12 @@
           <button
             class="p-1.5 rounded-lg bg-primary text-white hover:bg-blue-600 transition-colors flex items-center justify-center"
             style="width: 32px; height: 32px;"
-            on:click={handleSubmit}
+            on:click={(e) => {
+              handleSubmit();
+              // Prevent button from stealing focus
+              e.preventDefault();
+              if (textareaElement) textareaElement.focus();
+            }}
             disabled={isLoading}
           >
             {#if isLoading}
