@@ -2,11 +2,10 @@
   import type { ChatMessage, ChatState, ChatSource } from "$lib/types/chat";
   import { scrollToPosition, handleScroll, initScrollCheck, positionTooltip, hideTooltip } from "$lib/utils/sources";
   import { processReasoningMessage, processOutputMessage, toggleReasoning, processSource } from '$lib/utils/chat';
-  import { desktopIntegration } from '$lib/stores/desktopIntegration';
   import { renderLatex, renderContent } from '$lib/utils/katex';
+  import ChatInput from '$lib/components/chat/chat-input.svelte';
   import "katex/dist/katex.min.css";
   
-  import { isIntegrated } from "$lib/utils/integration";
   import { CheckIcon, ChevronDownIcon, FileIcon, FileTextIcon, HardDriveIcon, SendIcon } from "svelte-feather-icons";
   import { onMount } from "svelte";
   import { conversationStore } from "$lib/stores/conversationStore";
@@ -21,7 +20,6 @@
   };
   
   let messages: ChatMessage[] = [];
-  let userQuery: string = '';
   let conversationContainer: HTMLDivElement;
   let isReasoning = false;
   let truncateLength = 80;
@@ -63,9 +61,10 @@
     }
   });
   
-  async function query() {
+  async function handleSendMessage(event: { detail: { query: string } }) {
     try {
       isLoading = true;
+      const userQuery = event.detail.query;
 
       const res = await fetch('/chat', {
         method: 'POST',
@@ -112,17 +111,6 @@
       console.error('sendMessage error:', err);
       isLoading = false;
     }
-
-    userQuery = '';
-    
-    // Reset textarea height for both textareas
-    setTimeout(() => {
-      const textareas = document.querySelectorAll('textarea');
-      textareas.forEach(textarea => {
-        textarea.style.height = 'auto';
-        textarea.rows = 1;
-      });
-    }, 0);
   }
 
   function streamResponse() {
@@ -213,8 +201,6 @@
       isLoading = false;
     });
   }
-
-  
 
   // Handle cleanup when component is destroyed
   onMount(() => {
@@ -412,113 +398,11 @@
       {/each}
     </div>
     <!-- Chat Input -->
-    <div class="sticky bottom-0 left-0 right-0 flex justify-center z-10 opacity-95 focus-within:opacity-100 chat-input-container">
-      <div class="w-full max-w-3xl p-4 pt-0">
-        <div class="relative bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden w-full">
-          <textarea
-            bind:value={userQuery}
-            placeholder="Ask me anything..."
-            class="w-full px-4 py-3 pb-14 focus:outline-none prose prose-lg resize-none overflow-y-auto textarea-scrollbar border-none"
-            rows="1"
-            on:input={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = 'auto';
-              const newHeight = target.scrollHeight;
-              const maxHeight = 150;
-              target.style.height = Math.min(newHeight, maxHeight) + 'px';
-              target.style.overflowY = newHeight > maxHeight ? 'auto' : 'hidden';
-            }}
-            on:keydown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                query();
-              }
-            }}
-          ></textarea>
-          
-          <div class="absolute pr-2 bottom-0 left-0 right-0 bg-white p-2 px-4 flex items-center justify-between">
-            <!-- Integration Badges -->
-            <div class="flex gap-2">
-              <!-- Desktop Integration -->
-              <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full">
-                <div class="relative">
-                  <div
-                    class="w-2 h-2 rounded-full"
-                    style="background-color: {$desktopIntegration && $desktopIntegration.isCrawling && $desktopIntegration.crawledFiles != $desktopIntegration.totalFiles ? 'orange' : $desktopIntegration && $desktopIntegration.isOnline ? 'green' : 'red'}" 
-                  ></div>
-                  <div
-                    class="w-2 h-2 rounded-full absolute top-0 animate-ping"
-                    style="background-color: {$desktopIntegration && $desktopIntegration.isCrawling && $desktopIntegration.crawledFiles != $desktopIntegration.totalFiles ? 'orange' : $desktopIntegration && $desktopIntegration.isOnline ? 'green' : 'red'}"
-                  ></div>
-                </div>
-                <span class="text-xs text-gray-600 ml-1">Desktop {$desktopIntegration && $desktopIntegration.isCrawling && $desktopIntegration.crawledFiles != $desktopIntegration.totalFiles ? $desktopIntegration.crawledFiles + ' / ' + $desktopIntegration.totalFiles + ' files' : ""}</span>
-              </div>
-              
-              <!-- Google -->
-              <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full">
-                <div class="relative">
-                  <div
-                    class="w-2 h-2 rounded-full"
-                    style="background-color: {isIntegrated(data.integrations, 'GOOGLE') ? 'green' : 'red'}"
-                  ></div>
-                  <div
-                    class="w-2 h-2 rounded-full absolute top-0 animate-ping"
-                    style="background-color: {isIntegrated(data.integrations, 'GOOGLE') ? 'green' : 'red'}"
-                  ></div>
-                </div>
-                <span class="text-xs text-gray-600 ml-1">Google</span>
-              </div>
-              <!-- Microsoft -->
-              <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full">
-                <div class="relative">
-                  <div
-                    class="w-2 h-2 rounded-full"
-                    style="background-color: {isIntegrated(data.integrations, 'MICROSOFT') ? 'green' : 'red'}"
-                  ></div>
-                  <div
-                    class="w-2 h-2 rounded-full absolute top-0 animate-ping"
-                    style="background-color: {isIntegrated(data.integrations, 'MICROSOFT') ? 'green' : 'red'}"
-                  ></div>
-                </div>
-                <span class="text-xs text-gray-600 ml-1">Microsoft</span>
-              </div>
-              <!-- Notion -->
-              <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full">
-                <div class="relative">
-                  <div
-                    class="w-2 h-2 rounded-full"
-                    style="background-color: {isIntegrated(data.integrations, 'NOTION') ? 'green' : 'red'}"
-                  ></div>
-                  <div
-                    class="w-2 h-2 rounded-full absolute top-0 animate-ping"
-                    style="background-color: {isIntegrated(data.integrations, 'NOTION') ? 'green' : 'red'}"
-                  ></div>
-                </div>
-                <span class="text-xs text-gray-600 ml-1">Notion</span>
-              </div>
-            </div>
-            
-            <!-- Send Button -->
-            <button
-              class="p-1.5 rounded-lg bg-primary text-white hover:bg-blue-600 transition-colors flex items-center justify-center"
-              style="width: 32px; height: 32px;"
-              on:click={query}
-              disabled={isLoading}
-            >
-              {#if isLoading}
-                <div class="pulse-loader">
-                  <div class="bar"></div>
-                  <div class="bar"></div>
-                  <div class="bar"></div>
-                </div>
-              {:else}
-                <SendIcon size="18" />
-              {/if}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ChatInput 
+      on:send={handleSendMessage} 
+      {isLoading} 
+      integrations={data.integrations} 
+    />
   </div>
 </main>
 
@@ -679,28 +563,6 @@
     width: 20px;
     justify-content: center;
     position: relative;
-  }
-
-  .pulse-loader .bar {
-    width: 3px;
-    background-color: white;
-    border-radius: 1px;
-    animation: pulse 0.6s ease-in-out infinite;
-  }
-
-  .pulse-loader .bar:nth-child(1) {
-    height: 5px;
-    animation-delay: 0s;
-  }
-
-  .pulse-loader .bar:nth-child(2) {
-    height: 8px;
-    animation-delay: 0.15s;
-  }
-
-  .pulse-loader .bar:nth-child(3) {
-    height: 6px;
-    animation-delay: 0.3s;
   }
 
   @keyframes pulse {
