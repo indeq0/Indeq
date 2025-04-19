@@ -16,7 +16,7 @@
 <div class="space-y-4">
   <div class="prose max-w-3xl mx-auto prose-lg w-full overflow-x-hidden">
     {#if message.sender === 'user'}
-      <div class="font-bold prose-xl break-words whitespace-normal overflow-hidden w-full">{message.text}</div>
+      <div class="font-bold prose-xl whitespace-normal overflow-hidden w-full">{message.text}</div>
     {:else}
       {#if message.sources.length > 0}
         <div class="mb-6">

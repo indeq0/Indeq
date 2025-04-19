@@ -56,7 +56,7 @@
             const target = e.target as HTMLTextAreaElement;
             target.style.height = 'auto';
             const newHeight = target.scrollHeight;
-            const maxHeight = 150;
+            const maxHeight = 450;
             target.style.height = Math.min(newHeight, maxHeight) + 'px';
             target.style.overflowY = newHeight > maxHeight ? 'auto' : 'hidden';
           }}
