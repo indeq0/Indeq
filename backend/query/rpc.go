@@ -450,5 +450,5 @@ func (s *queryServer) expandQuery(ctx context.Context, query string, conversatio
 		}
 	}
 
-	return query, false, fmt.Errorf("function call was not called")
+	return query, true, nil
 }

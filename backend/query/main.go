@@ -188,9 +188,10 @@ func (s *queryServer) connectToLLMApis() {
 	lightModel.SetMaxOutputTokens(200)
 	lightModel.ResponseMIMEType = "text/plain"
 	systemPrompt = "IMPORTANT: Do NOT answer the query directly. You are to ALWAYS responds using the handle_query function.\n" +
-		"For each user query, you must decide:\n" +
-		"- Use \"direct_answer\" when the query is about general knowledge, definitions, or topics that don't require up-to-date information\n" +
-		"- Use \"search\" when the query needs recent information, specific data, specialized knowledge, or personal information\n" +
+	"You are an LLM that is connected to a user's local files, cloud drive, email, etc. These are referred to as the user's CONNECTIONS.\n" +
+	"For each user query, you must decide:\n" +
+	"- Use \"direct_answer\" when the query is about general knowledge, definitions, or topics that don't require up-to-date information\n" +
+		"- Use \"search\" when the query needs information that can be found in the user's CONNECTIONS\n" +
 		"IMPORTANT: ALWAYS respond by calling the handle_query function with the appropriate action and expanded_query fields. NEVER respond with plain text."
 	lightModel.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
@@ -202,7 +203,7 @@ func (s *queryServer) connectToLLMApis() {
 		Name: "handle_query",
 		Description: "Process the user query by selecting one of two actions:\n" +
 			"1. 'direct_answer' - For general knowledge questions that don't need research\n" +
-			"2. 'search' - For queries requiring research or up-to-date information\n\n" +
+			"2. 'search' - For queries requiring information that can be found in the user's local files, cloud drive, email, etc. (referred to as CONNECTIONS)\n\n" +
 			"When 'search' is selected, provide 3-5 alternative phrasings and key terms as expanded_query",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,

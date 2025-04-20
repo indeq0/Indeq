@@ -1,13 +1,14 @@
 package main
 
 import (
-	"github.com/cc-0000/indeq/common/config"
-	mqtt "github.com/mochi-mqtt/server/v2"
-	"github.com/mochi-mqtt/server/v2/listeners"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/cc-0000/indeq/common/config"
+	mqtt "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/listeners"
 )
 
 func main() {
