@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	pb "github.com/cc-0000/indeq/common/api"
@@ -22,6 +23,7 @@ import (
 //   - implements topic restrictions based on the connecting client's certificate UID
 type CertAuthHook struct {
 	mqtt.HookBase
+	mu           sync.RWMutex
 	clientIDtoUID map[string]string // Map of client IDs --> certificate UIDs
 	desktopClient pb.DesktopServiceClient
 	desktopConn   *grpc.ClientConn
@@ -112,7 +114,9 @@ func (h *CertAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet)
 	}
 
 	// Store the mapping between client ID and certificate UID in our hook
+	h.mu.Lock()
 	h.clientIDtoUID[cl.ID] = uid
+	h.mu.Unlock()
 
 	// Update user's online status to true in desktop service
 	if h.desktopClient != nil {
@@ -138,7 +142,9 @@ func (h *CertAuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet)
 //   - desktop-service should get unrestrained access
 func (h *CertAuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
 	// Get stored UID from our mapping using client ID
+	h.mu.RLock()
 	uid, ok := h.clientIDtoUID[cl.ID]
+	h.mu.RUnlock()
 	if !ok {
 		return false // No UID stored for this client
 	}
@@ -210,8 +216,12 @@ func extractUIDFromCert(cert *x509.Certificate) string {
 // - updates the user's online status to false in the desktop service
 func (h *CertAuthHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
 	// Get the UID before deleting the mapping
+	h.mu.Lock()
 	uid, ok := h.clientIDtoUID[cl.ID]
-	delete(h.clientIDtoUID, cl.ID)
+	if ok {
+		delete(h.clientIDtoUID, cl.ID)
+	}
+	h.mu.Unlock()
 	if !ok {
 		return
 	}
@@ -236,5 +246,7 @@ func (h *CertAuthHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
 //   - overrides the OnStopped() method in mqtt.HookBase
 //   - closes the connection to the desktop service
 func (h *CertAuthHook) OnStopped() {
-	h.desktopConn.Close()
+	if h.desktopConn != nil {
+		h.desktopConn.Close()
+	}
 }
