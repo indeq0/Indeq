@@ -31,7 +31,7 @@ type desktopServer struct {
 	mqttClient        mqtt.Client
 	db                *sql.DB
 	kafkaWriter       *kafka.Writer
-	queryChannels     map[int64]chan *pb.DesktopChunkResponse
+	queryChannels     map[int32]chan *pb.DesktopChunkResponse
 	queryChannelMutex sync.Mutex
 }
 
@@ -41,7 +41,7 @@ type desktopServer struct {
 //   - assumes: that each user will only be subscribed to their own topic/user_id
 func (s *desktopServer) GetChunksFromUser(ctx context.Context, req *pb.GetChunksFromUserRequest) (*pb.GetChunksFromUserResponse, error) {
 	// generate a pseudo-unique random request ID
-	requestID := time.Now().UnixNano() + int64(rand.Intn(1000))
+	requestID := int32(time.Now().UnixNano()) + int32(rand.Intn(1000))
 	userID := req.UserId
 	timeout := time.Duration(int64(req.Ttl)) * time.Millisecond
 
@@ -77,7 +77,7 @@ func (s *desktopServer) GetChunksFromUser(ctx context.Context, req *pb.GetChunks
 			delete(s.queryChannels, requestID)
 		}
 		return &pb.GetChunksFromUserResponse{
-			NumChunks: int64(len(result.TextChunks)),
+			NumChunks: int32(len(result.TextChunks)),
 			Chunks:    result.TextChunks,
 		}, nil
 	// we ran out of time
@@ -487,7 +487,7 @@ func main() {
 
 	// create the server struct
 	server := &desktopServer{
-		queryChannels: make(map[int64]chan *pb.DesktopChunkResponse),
+		queryChannels: make(map[int32]chan *pb.DesktopChunkResponse),
 	}
 
 	// Connect to the Desktop Database
