@@ -15,7 +15,8 @@ service QueryService {
 message QueryRequest {
     string user_id = 1;
     string conversation_id = 2;
-    string query = 3;
+    string model = 3;
+    string query = 4;
 }
 
 message QueryResponse {}

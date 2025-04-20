@@ -21,14 +21,15 @@ import (
 
 type retrievalServer struct {
 	pb.UnimplementedRetrievalServiceServer
-	desktopConn     *grpc.ClientConn
-	desktopClient   pb.DesktopServiceClient
-	vectorConn      *grpc.ClientConn
-	vectorClient    pb.VectorServiceClient
-	embeddingConn   *grpc.ClientConn
-	embeddingClient pb.EmbeddingServiceClient
-	crawlingConn    *grpc.ClientConn
-	crawlingClient  pb.CrawlingServiceClient
+	desktopConn         *grpc.ClientConn
+	desktopClient       pb.DesktopServiceClient
+	vectorConn          *grpc.ClientConn
+	vectorClient        pb.VectorServiceClient
+	embeddingConn       *grpc.ClientConn
+	embeddingClient     pb.EmbeddingServiceClient
+	crawlingConn        *grpc.ClientConn
+	crawlingClient      pb.CrawlingServiceClient
+	rankingMinThreshold float32
 }
 
 // rpc(context, retrieve top k chunks request)
@@ -170,9 +171,12 @@ func (s *retrievalServer) RetrieveTopKChunks(ctx context.Context, req *pb.Retrie
 		return passageScores[i].score > passageScores[j].score
 	})
 
-	// collect only the first numberOfSources chunks
+	// collect only the first numberOfSources chunks and passages that higher than a certain threshold
 	var topNumberOfSourcesChunks []*pb.TextChunkMessage
 	for i := range min(numberOfSources, int32(len(passageScores))) {
+		if passageScores[i].score < s.rankingMinThreshold {
+			break
+		}
 		topNumberOfSourcesChunks = append(topNumberOfSourcesChunks, passageScores[i].chunk)
 	}
 
@@ -239,6 +243,12 @@ func (s *retrievalServer) connectToEmbeddingService(tlsConfig *tls.Config) {
 	if err != nil {
 		log.Fatalf("Failed to establish connection with embedding-service: %v", err)
 	}
+
+	rankingMinThreshold, err := strconv.ParseFloat(os.Getenv("RANKING_MIN_THRESHOLD"), 32)
+	if err != nil {
+		log.Fatalf("Failed to parse RANKING_MIN_THRESHOLD: %v", err)
+	}
+	s.rankingMinThreshold = float32(rankingMinThreshold)
 
 	s.embeddingConn = embeddingConn
 	s.embeddingClient = pb.NewEmbeddingServiceClient(embeddingConn)

@@ -1,4 +1,4 @@
-export interface Source {
+export interface ChatSource {
     id: number;
     extension: string;
     filePath: string;
@@ -6,17 +6,17 @@ export interface Source {
     showTooltip: boolean;
 }
 
-export interface BotMessage {
+export interface ChatMessage {
     text: string;
     sender: string;
     reasoning: {text: string; collapsed: boolean}[];
     reasoningSectionCollapsed: boolean;
-    sources: Source[];
+    sources: ChatSource[];
     sourcesScrollAtEnd?: boolean;
     isScrollable?: boolean;
 }
 
 export interface ChatState {
-    messages: BotMessage[];
+    messages: ChatMessage[];
     isReasoning: boolean;
 }

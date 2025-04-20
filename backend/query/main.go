@@ -33,6 +33,9 @@ type queryServer struct {
 	queueTTL                       int
 	summaryUpperBound              int
 	summaryLowerBound              int
+	systemPrompt                   string
+	deepInfraApiKey                string
+	openAiApiKey                   string
 	geminiClient                   *genai.Client
 	geminiFlash2ModelHeavy         *genai.GenerativeModel
 	geminiFlash2ModelLight         *genai.GenerativeModel
@@ -124,7 +127,7 @@ func (s *queryServer) connectToRabbitMQ() {
 // func(context)
 //   - connects to google gemini
 //   - assumes: the client will be closed in the parent function at some point
-func (s *queryServer) connectToGoogleGemini() {
+func (s *queryServer) connectToLLMApis() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -132,6 +135,18 @@ func (s *queryServer) connectToGoogleGemini() {
 	if !ok {
 		log.Fatalf("failed to retrieve the gemini api key")
 	}
+
+	deepInfraApiKey, ok := os.LookupEnv("DEEPINFRA_API_KEY")
+	if !ok {
+		log.Fatalf("failed to retrieve the deep infra api key")
+	}
+	s.deepInfraApiKey = deepInfraApiKey
+
+	openAiApiKey, ok := os.LookupEnv("OPENAI_API_KEY")
+	if !ok {
+		log.Fatalf("failed to retrieve the openai api key")
+	}
+	s.openAiApiKey = openAiApiKey
 
 	summaryUpperBound, err := strconv.ParseInt(os.Getenv("QUERY_SUMMARY_UPPER_BOUND"), 10, 64)
 	if err != nil {
@@ -151,18 +166,19 @@ func (s *queryServer) connectToGoogleGemini() {
 	}
 	s.geminiClient = client
 
-	heavyModel := client.GenerativeModel("gemini-2.0-flash-lite")
+	heavyModel := client.GenerativeModel("gemini-2.0-flash")
 	heavyModel.SetTemperature(1)
 	heavyModel.SetTopK(1)
 	heavyModel.SetTopP(0.95)
 	heavyModel.SetMaxOutputTokens(8196)
 	heavyModel.ResponseMIMEType = "text/plain"
-	systemPrompt := "You are a very helpful assistant called Indeq with knowledge on virtually every single topic. You will ALWAYS find the best answer to the user's query, even if you're missing information from excerpts. Use the conversation history, and any provided excerpts to augment your general knowledge and then answer the question that follows. Always cite sources using the <number_of_excerpt_in_question> (with angle brackets!) when using specific information from the excerpts.\n\n"
+	systemPrompt := "You are a very helpful assistant called Indeq with knowledge on virtually every single topic. You will ALWAYS find the best answer to the user's query, even if you're missing information from excerpts. Use the conversation history, and any provided excerpts to augment your general knowledge and then answer the question that follows. Always cite excerpts using the <number_of_excerpt_in_question> (for example, when citing Excerpt: 1, use <1>) when using specific information from the excerpts.\n\n"
 	heavyModel.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
 			genai.Text(systemPrompt),
 		},
 	}
+	s.systemPrompt = systemPrompt
 	s.geminiFlash2ModelHeavy = heavyModel
 
 	lightModel := client.GenerativeModel("gemini-2.0-flash-lite")
@@ -171,18 +187,44 @@ func (s *queryServer) connectToGoogleGemini() {
 	lightModel.SetTopP(0.95)
 	lightModel.SetMaxOutputTokens(200)
 	lightModel.ResponseMIMEType = "text/plain"
-	systemPrompt = "IMPORTANT: Do NOT answer the query directly. Your task is ONLY to expand and rephrase the query into search terms.\n\n" +
-		"Instructions:\n" +
-		"1. Analyze the user query\n" +
-		"2. Generate 3-5 alternative phrasings, related concepts, and key terms that would be useful for searching documents\n" +
-		"3. Format your response ONLY as a list of search terms and phrases\n" +
-		"4. Do NOT provide explanations or direct answers to the query\n\n"
-
+	systemPrompt = "IMPORTANT: Do NOT answer the query directly. You are to ALWAYS responds using the handle_query function.\n" +
+		"For each user query, you must decide:\n" +
+		"- Use \"direct_answer\" when the query is about general knowledge, definitions, or topics that don't require up-to-date information\n" +
+		"- Use \"search\" when the query needs recent information, specific data, specialized knowledge, or personal information\n" +
+		"IMPORTANT: ALWAYS respond by calling the handle_query function with the appropriate action and expanded_query fields. NEVER respond with plain text."
 	lightModel.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
 			genai.Text(systemPrompt),
 		},
 	}
+	// Define our function declaration for query handling
+	handleQueryFunction := &genai.FunctionDeclaration{
+		Name: "handle_query",
+		Description: "Process the user query by selecting one of two actions:\n" +
+			"1. 'direct_answer' - For general knowledge questions that don't need research\n" +
+			"2. 'search' - For queries requiring research or up-to-date information\n\n" +
+			"When 'search' is selected, provide 3-5 alternative phrasings and key terms as expanded_query",
+		Parameters: &genai.Schema{
+			Type: genai.TypeObject,
+
+			Properties: map[string]*genai.Schema{
+				"action": {
+					Type:        genai.TypeString,
+					Enum:        []string{"search", "direct_answer"},
+					Description: "Whether to search for more information or provide a direct answer",
+				},
+				"expanded_query": {
+					Type:        genai.TypeString,
+					Description: "Expanded search terms and phrases if action is 'search'",
+				},
+			},
+			Required: []string{"action"},
+		},
+	}
+	lightModel.Tools = []*genai.Tool{
+		{FunctionDeclarations: []*genai.FunctionDeclaration{handleQueryFunction}},
+	}
+
 	s.geminiFlash2ModelLight = lightModel
 
 	summarizationModel := client.GenerativeModel("gemini-2.0-flash-lite")
@@ -302,7 +344,7 @@ func main() {
 	defer server.retrievalConn.Close()
 
 	// Connect to google gemini
-	server.connectToGoogleGemini()
+	server.connectToLLMApis()
 	defer server.geminiClient.Close()
 
 	// Connect to couchdb

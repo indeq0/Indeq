@@ -321,6 +321,7 @@ func handlePostQueryGenerator(clients *ServiceClients) http.HandlerFunc {
 			_, err := clients.queryClient.MakeQuery(detachedCtx, &pb.QueryRequest{
 				UserId:         verifyRes.UserId,
 				ConversationId: conversationId,
+				Model:          queryRequest.Model,
 				Query:          queryRequest.Query,
 			})
 			if err != nil {

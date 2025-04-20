@@ -8,6 +8,9 @@
     import { isValidRoute } from '$lib/config/sidebar-routes';
     import { browser } from '$app/environment';
     import { PUBLIC_APP_ENV } from '$env/static/public';
+    import { conversationStore } from '$lib/stores/conversationStore';
+    import { onMount } from 'svelte';
+    import { goto } from '$app/navigation';
   let { children } = $props();
 
   const siteUrl = 'https://indeq.app';
@@ -20,6 +23,24 @@
       mode: 'production'
     });
   }
+
+  // Preload conversation history when the app loads
+  onMount(() => {
+    if (browser && PUBLIC_APP_ENV != 'PRODUCTION') {
+      conversationStore.fetchConversations();
+      
+      // Add keyboard shortcut for Command + K to navigate to /chat
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'i')) {
+          e.preventDefault();
+          goto('/chat');
+        }
+      };
+      
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  });
 </script>
 
 <svelte:head>
