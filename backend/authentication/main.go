@@ -75,6 +75,34 @@ type Config struct {
 	Duration  time.Duration
 }
 
+const (
+	subjectVerify = "Indeq - Verify Your Account"
+	subjectReset = "Indeq - Reset Your Password"
+	verifyBody = `Welcome to Indeq!
+
+To verify your account, enter the following 6-digit code:
+
+Your verification code: %s
+
+This code will expire in 5 minutes. If you did not request this verification code, you can safely ignore this email.
+
+Thank you,
+The Indeq Team
+`
+	resetBody = `Hi there,
+
+You requested a password reset.
+
+To reset your password, enter the following 6-digit code:
+
+Your verification code: %s
+
+This code will expire in 5 minutes. If you did not request a password reset, please ignore this email.
+
+Thank you,
+The Indeq Team`
+)
+
 func generateOTP() (string, error) {
 	const digits = "0123456789"
 	const length = 6
@@ -100,6 +128,37 @@ func generateOTP() (string, error) {
 	}
 
 	return string(otp), nil
+}
+
+func saltAndHashPassword(password string, argonParams *params) (string, error) {
+	// Generate a random salt
+	salt := make([]byte, argonParams.saltLength)
+	if _, err := rand.Read(salt); err != nil {
+		return "", fmt.Errorf("couldn't make a salt: %v", err)
+	}
+
+	// Generate a password hash
+	hash := argon2.IDKey(
+		[]byte(password),
+		salt,
+		argonParams.iterations,
+		argonParams.memory,
+		argonParams.parallelism,
+		argonParams.keyLength,
+	)
+
+	// Keep encryption details alongside the hash
+	encodedHash := fmt.Sprintf(
+		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
+		argon2.Version,
+		argonParams.memory,
+		argonParams.iterations,
+		argonParams.parallelism,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(hash),
+	)
+
+	return encodedHash, nil
 }
 
 // func()
@@ -467,35 +526,13 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 		}, nil
 	}
 
-	// Generate a random salt
-	salt := make([]byte, s.argonParams.saltLength)
-	if _, err := rand.Read(salt); err != nil {
+	encodedHash, err := saltAndHashPassword(req.Password, s.argonParams)
+	if err != nil {
 		return &pb.RegisterResponse{
 			Success: false,
-			Error:   fmt.Sprintf("couldn't make a salt: %v", err),
+			Error:   "Something went wrong. Please try again later.",
 		}, err
 	}
-
-	// Generate a password hash
-	hash := argon2.IDKey(
-		[]byte(req.Password),
-		salt,
-		s.argonParams.iterations,
-		s.argonParams.memory,
-		s.argonParams.parallelism,
-		s.argonParams.keyLength,
-	)
-
-	// Keep encryption details alongside the hash
-	encodedHash := fmt.Sprintf(
-		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version,
-		s.argonParams.memory,
-		s.argonParams.iterations,
-		s.argonParams.parallelism,
-		base64.RawStdEncoding.EncodeToString(salt),
-		base64.RawStdEncoding.EncodeToString(hash),
-	)
 
 	// Generate a random OTP
 	otp, err := generateOTP()
@@ -540,20 +577,9 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 
 	// Compose the email body for verification.
 	// do not change format
-	emailBody := fmt.Sprintf(`Welcome to Indeq!
+	emailBody := fmt.Sprintf(verifyBody, otp)
 
-To verify your account, enter the following 6-digit code:
-
-Your verification code: %s
-
-This code will expire in 5 minutes. If you did not request this verification code, you can safely ignore this email.
-
-Thank you,
-The Indeq Team
-`, otp)
-
-	emailSubject := "Indeq - Verify Your Account"
-	err = s.sendEmail(req.Email, emailSubject, emailBody)
+	err = s.sendEmail(req.Email, subjectVerify, emailBody)
 	if err != nil {
 		// if the email sending fails, return an error
 		return &pb.RegisterResponse{
@@ -647,20 +673,9 @@ func (s *authServer) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (*
 
 		// Compose the email body for verification.
 		// do not change format
-		emailBody := fmt.Sprintf(`Welcome to Indeq!
+		emailBody := fmt.Sprintf(verifyBody, newOTP)
 
-To verify your account, enter the following 6-digit code:
-
-Your verification code: %s
-
-This code will expire in 5 minutes. If you did not request this verification code, please ignore this email.
-
-Thank you,
-The Indeq Team
-`, newOTP)
-		emailSubject := "Indeq - Verify Your Account"
-
-		if err := s.sendEmail(payload.Email, emailSubject, emailBody); err != nil {
+		if err := s.sendEmail(payload.Email, subjectVerify, emailBody); err != nil {
 			// if the email sending fails, return an error
 			return &pb.ResendOTPResponse{
 				Success: false,
@@ -700,27 +715,13 @@ The Indeq Team
 
 		// Compose the email body for password reset.
 		// do not change format
-		emailBody := fmt.Sprintf(`Hi there,
-
-You requested a password reset.
-
-To reset your password, enter the following 6-digit code:
-
-Your verification code: %s
-
-This code will expire in 5 minutes. If you did not request a password reset, please ignore this email.
-
-Thank you,
-The Indeq Team
-`, newOTP)
-		emailSubject := "Indeq - Reset Your Password"
-
+		emailBody := fmt.Sprintf(resetBody, newOTP)
 		// Send the email.
-		if err := s.sendEmail(payload.Email, emailSubject, emailBody); err != nil {
+		if err := s.sendEmail(payload.Email, subjectReset, emailBody); err != nil {
 			// if the email sending fails, return an error
 			return &pb.ResendOTPResponse{
 				Success: false,
-				Error:   "Failed to send verification email",
+				Error:   "Failed to send password reset email",
 			}, err
 		}
 	}
@@ -977,22 +978,9 @@ func (s *authServer) ForgotPassword(ctx context.Context, req *pb.ForgotPasswordR
 
 	// create the email body
 	// do not change format
-	emailBody := fmt.Sprintf(`Hi there,
+	emailBody := fmt.Sprintf(resetBody, otp)
 
-You requested a password reset.
-
-To reset your password, enter the following 6-digit code:
-
-Your verification code: %s
-
-This code will expire in 5 minutes. If you did not request a password reset, please ignore this email.
-
-Thank you,
-The Indeq Team
-`, otp)
-	emailSubject := "Indeq - Reset Your Password"
-
-	if err := s.sendEmail(req.Email, emailSubject, emailBody); err != nil {
+	if err := s.sendEmail(req.Email, subjectReset, emailBody); err != nil {
 		// if the email sending fails, return an error
 		return &pb.ForgotPasswordResponse{
 			Success: false,
@@ -1061,36 +1049,15 @@ func (s *authServer) ResetPassword(ctx context.Context, req *pb.ResetPasswordReq
 		}, err
 	}
 
-	// Generate a random salt
-	salt := make([]byte, s.argonParams.saltLength)
-	if _, err := rand.Read(salt); err != nil {
-		// if the salt generation fails, return an error
+	// Generate a password hash
+	encodedHash, err := saltAndHashPassword(req.Password, s.argonParams)
+	if err != nil {
+		// if the password hashing fails, return an error
 		return &pb.ResetPasswordResponse{
 			Success: false,
-			Error:   fmt.Sprintf("couldn't make a salt: %v", err),
+			Error:   "Something went wrong. Please try again later.",
 		}, err
 	}
-
-	// Generate a password hash
-	hash := argon2.IDKey(
-		[]byte(req.Password),
-		salt,
-		s.argonParams.iterations,
-		s.argonParams.memory,
-		s.argonParams.parallelism,
-		s.argonParams.keyLength,
-	)
-
-	// Keep encryption details alongside the hash
-	encodedHash := fmt.Sprintf(
-		"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
-		argon2.Version,
-		s.argonParams.memory,
-		s.argonParams.iterations,
-		s.argonParams.parallelism,
-		base64.RawStdEncoding.EncodeToString(salt),
-		base64.RawStdEncoding.EncodeToString(hash),
-	)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
