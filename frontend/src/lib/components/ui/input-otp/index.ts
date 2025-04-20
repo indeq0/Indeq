@@ -1,0 +1,1 @@
+export { default as InputOTP } from './input-otp.svelte';

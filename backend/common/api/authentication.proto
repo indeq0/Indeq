@@ -9,6 +9,10 @@ service AuthenticationService {
     rpc Register(RegisterRequest) returns (RegisterResponse);
     rpc Verify(VerifyRequest) returns (VerifyResponse);
     rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
+    rpc VerifyOTP(VerifyOTPRequest) returns (VerifyOTPResponse);
+    rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
+    rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+    rpc ResendOTP(ResendOTPRequest) returns (ResendOTPResponse);
 }
 
 message LoginRequest {
@@ -31,6 +35,7 @@ message RegisterRequest {
 message RegisterResponse {
     bool success = 1;
     string error = 2;
+    string token = 3;
 }
 
 message VerifyRequest {
@@ -52,3 +57,45 @@ message SignCSRResponse {
     string certificate_base64 = 1;
 }
 
+message VerifyOTPRequest {
+    string code = 1;
+    string type = 2;
+    string token = 3;
+}
+
+message VerifyOTPResponse {
+    bool success = 1;
+    string error = 2;
+    string token = 3;
+    string user_id = 4;
+}
+
+message ResendOTPRequest {
+    string type = 1;
+    string token = 2;
+}
+
+message ResendOTPResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message ForgotPasswordRequest {
+    string email = 1;
+}
+
+message ForgotPasswordResponse {
+    bool success = 1;
+    string error = 2;
+    string token = 3;
+}
+
+message ResetPasswordRequest {
+    string password = 1;
+    string token = 2;
+}
+
+message ResetPasswordResponse {
+    bool success = 1;
+    string error = 2;
+}
