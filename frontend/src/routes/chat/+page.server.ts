@@ -3,7 +3,7 @@ import { redirect, error } from '@sveltejs/kit';
 import { GO_BACKEND_URL } from '$env/static/private';
 import type { DesktopIntegration } from '$lib/types/desktopIntegration';
 
-export const load: PageServerLoad = async ({ cookies, fetch }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
   const session = cookies.get('jwt');
   if (!session) {
     // No user, redirect to login
@@ -32,7 +32,7 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
     integrationData = await integrations.json();
     desktopIntegrationData = await desktopIntegration.json();
   } catch (err) {
-    throw error(500, ' to fetch integrations');
+    throw error(500, 'Failed to fetch integrations');
   }
 
   const providers = integrationData.providers ?? [];

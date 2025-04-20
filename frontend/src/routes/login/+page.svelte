@@ -56,7 +56,13 @@
           </div>
           <div class="grid gap-2">
             <Label for="password">Password</Label>
-            <Input id="password" name="password" type="password" />
+            <Input id="password" name="password" type="password" placeholder="********" />
+            <a
+              href="/forgot-password"
+              class="text-xs text-muted-foreground hover:text-primary hover:underline justify-self-start"
+            >
+              Forgot password?
+            </a>
           </div>
           {#if form?.error}
             <div class="text-destructive text-sm">{form.error}</div>

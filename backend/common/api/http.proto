@@ -13,6 +13,7 @@ message HttpHelloResponse {
 message HttpQueryRequest {
   string query = 1;
   string conversation_id = 2; // optional --> this will be blank if the user is creating a new conversation
+  string model = 3;
 }
 
 message HttpQueryResponse {
@@ -56,6 +57,7 @@ message HttpRegisterRequest {
 message HttpRegisterResponse {
   bool success = 1;
   string error = 2;
+  string token = 3;
 }
 
 message HttpLoginRequest {
@@ -138,4 +140,47 @@ message HttpGetDesktopStatsResponse {
   int32 total_files = 2;
   bool is_crawling = 3;
   bool is_online = 4;
+}
+
+message HttpVerifyOTPRequest {
+  string code = 1;
+  string type = 2;
+  string token = 3;
+}
+
+message HttpVerifyOTPResponse {
+  bool success = 1;
+  string error = 2;
+  string token = 3;
+  string user_id = 4;
+}
+
+message HttpResendOTPRequest {
+  string type = 1;
+  string token = 2;
+}
+
+message HttpResendOTPResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message HttpForgotPasswordRequest {
+  string email = 1;
+}
+
+message HttpForgotPasswordResponse {
+  bool success = 1;
+  string error = 2;
+  string token = 3;
+}
+
+message HttpResetPasswordRequest {
+  string password = 1;
+  string token = 2;
+}
+
+message HttpResetPasswordResponse {
+  bool success = 1;
+  string error = 2;
 }
