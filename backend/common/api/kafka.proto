@@ -9,8 +9,8 @@ package api;
 enum Platform {
     PLATFORM_LOCAL = 0;
     PLATFORM_GOOGLE = 1;
-    PLATFORM_MICROSOFT = 3;
-    PLATFORM_NOTION = 4;
+    PLATFORM_MICROSOFT = 2;
+    PLATFORM_NOTION = 3;
 }
 
 message Metadata {

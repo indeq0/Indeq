@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -31,46 +33,41 @@ type cachedFolder struct {
 }
 
 // CrawlGoogleDrive retrieves and processes files from Google Drive
-func (s *crawlingServer) CrawlGoogleDrive(ctx context.Context, client *http.Client, userID string) (ListofFiles, error) {
+func (s *crawlingServer) CrawlGoogleDrive(ctx context.Context, client *http.Client, userID string) error {
 	filelist, err := GetGoogleDriveList(ctx, client, userID)
 	if err != nil {
-		return ListofFiles{}, fmt.Errorf("error retrieving Google Drive file list: %w", err)
+		return fmt.Errorf("error retrieving Google Drive file list: %w", err)
 	}
-
-	processedFiles, err := s.ProcessAllGoogleDriveFiles(ctx, client, filelist)
+	err = s.ProcessAllGoogleDriveFiles(ctx, client, filelist)
 	if err != nil {
-		return ListofFiles{}, fmt.Errorf("error processing Google Drive files: %w", err)
+		return fmt.Errorf("error processing Google Drive files: %w", err)
 	}
-
 	retrievalToken, err := GetStartPageToken(ctx, client)
 	if err != nil {
-		return ListofFiles{}, fmt.Errorf("error getting start page token: %w", err)
+		return fmt.Errorf("error getting start page token: %w", err)
 	}
-
 	if err := StoreGoogleDriveToken(ctx, s.db, userID, retrievalToken); err != nil {
-		return ListofFiles{}, fmt.Errorf("failed to store change token: %w", err)
+		return fmt.Errorf("failed to store change token: %w", err)
 	}
-	return processedFiles, nil
+	return nil
 }
 
 // UpdateCrawlGoogleDrive retrieves and processes changes in Google Drive
-func (s *crawlingServer) UpdateCrawlGoogleDrive(ctx context.Context, client *http.Client, userID string, changeToken string) (string, ListofFiles, error) {
+func (s *crawlingServer) UpdateCrawlGoogleDrive(ctx context.Context, client *http.Client, userID string, changeToken string) (string, error) {
 	filelist, newChangeToken, err := GetGoogleDriveChanges(ctx, client, changeToken, userID)
 	if err != nil {
-		return "", ListofFiles{}, fmt.Errorf("error retrieving Google Drive changes: %w", err)
+		return "", fmt.Errorf("error retrieving Google Drive changes: %w", err)
 	}
-
 	if len(filelist.Files) == 0 {
-		return changeToken, ListofFiles{}, nil
+		return changeToken, nil
 	}
-
 	var filePaths []string
 	for _, file := range filelist.Files {
 		if len(file.File) > 0 {
 			filePaths = append(filePaths, file.File[0].Metadata.FilePath)
 			resourceID := file.File[0].Metadata.ResourceID
-			if s.isFileProcessed(userID, resourceID) {
-				if err := UpsertProcessingStatus(ctx, s.db, userID, resourceID, false); err != nil {
+			if s.isFileProcessed(userID, resourceID, "GOOGLE") {
+				if err := UpsertProcessingStatus(ctx, s.db, userID, resourceID, "GOOGLE", false); err != nil {
 					log.Printf("Warning: failed to reset tracking status for file %s: %v", resourceID, err)
 				}
 			}
@@ -89,11 +86,11 @@ func (s *crawlingServer) UpdateCrawlGoogleDrive(ctx context.Context, client *htt
 		}
 	}
 
-	processedFiles, err := s.ProcessAllGoogleDriveFiles(ctx, client, filelist)
+	err = s.ProcessAllGoogleDriveFiles(ctx, client, filelist)
 	if err != nil {
-		return "", ListofFiles{}, fmt.Errorf("error processing Google Drive files: %w", err)
+		return "", fmt.Errorf("error processing Google Drive files: %w", err)
 	}
-	return newChangeToken, processedFiles, nil
+	return newChangeToken, nil
 }
 
 // createGoogleFileMetadata creates metadata for a Google Drive file
@@ -273,34 +270,15 @@ func createRemovedFileEntry(userID, fileID string) File {
 }
 
 // ProcessAllGoogleDriveFiles processes all Google Drive files concurrently by MIME type
-func (s *crawlingServer) ProcessAllGoogleDriveFiles(ctx context.Context, client *http.Client, fileList ListofFiles) (ListofFiles, error) {
+func (s *crawlingServer) ProcessAllGoogleDriveFiles(ctx context.Context, client *http.Client, fileList ListofFiles) error {
 	type result struct {
 		index int
 		file  File
 		err   error
 	}
 
-	resultCh := make(chan result)
 	chunkBatchSize := 50
 	chunkCh := make(chan TextChunkMessage, chunkBatchSize)
-
-	mimeGroups := make(map[string][]struct {
-		index int
-		file  File
-	})
-	for i, file := range fileList.Files {
-		if len(file.File) == 0 || file.File[0].Metadata.ResourceType == "" {
-			resultCh <- result{index: i, file: file}
-			continue
-		}
-		mimeType := file.File[0].Metadata.ResourceType
-		mimeGroups[mimeType] = append(mimeGroups[mimeType], struct {
-			index int
-			file  File
-		}{i, file})
-	}
-
-	var wg sync.WaitGroup
 	var chunkWg sync.WaitGroup
 
 	chunkWg.Add(1)
@@ -339,75 +317,92 @@ func (s *crawlingServer) ProcessAllGoogleDriveFiles(ctx context.Context, client 
 		}
 	}()
 
-	for mimeType, files := range mimeGroups {
-		wg.Add(1)
-		go func(mimeType string, files []struct {
-			index int
-			file  File
-		}) {
-			defer wg.Done()
-			handler, ok := mimeHandlers[mimeType]
-			if !ok {
-				for _, f := range files {
-					resultCh <- result{index: f.index, file: f.file}
-				}
-				return
+	type workItem struct {
+		index int
+		file  File
+	}
+	workItemsByType := make(map[string][]workItem)
+	resultCh := make(chan result, len(fileList.Files))
+
+	for i, file := range fileList.Files {
+		if len(file.File) == 0 || file.File[0].Metadata.ResourceType == "" {
+			resultCh <- result{index: i, file: file}
+			continue
+		}
+		mimeType := file.File[0].Metadata.ResourceType
+		workItemsByType[mimeType] = append(workItemsByType[mimeType], workItem{
+			index: i,
+			file:  file,
+		})
+	}
+
+	var wg sync.WaitGroup
+	for mimeType, items := range workItemsByType {
+		numWorkers := 5
+		var err error
+		switch mimeType {
+		case "application/vnd.google-apps.document":
+			numWorkers, err = strconv.Atoi(os.Getenv("CRAWLING_GOOGLEDOCS_MAX_WORKERS"))
+			if err != nil {
+				fmt.Printf("Warning: failed to retrieve the k value from the env variables: %v", err)
 			}
 
-			const batchSize = 5
-			for i := 0; i < len(files); i += batchSize {
-				end := i + batchSize
-				if end > len(files) {
-					end = len(files)
-				}
-
-				var batchWg sync.WaitGroup
-				for j := i; j < end; j++ {
-					batchWg.Add(1)
-					go func(f struct {
-						index int
-						file  File
-					}) {
-						defer batchWg.Done()
-
-						originalFilePath := f.file.File[0].Metadata.FilePath
-						originalUserID := f.file.File[0].Metadata.UserID
-						originalResourceID := f.file.File[0].Metadata.ResourceID
-
-						if s.isFileProcessed(originalUserID, originalResourceID) {
-							log.Printf("Skipping already processed file: %s", originalFilePath)
-							resultCh <- result{index: f.index, file: f.file}
-							return
-						}
-
-						processedFile, err := handler(ctx, client, f.file)
-						if err != nil {
-							resultCh <- result{index: f.index, err: fmt.Errorf("error processing file %s: %w", originalResourceID, err)}
-							return
-						}
-
-						if len(processedFile.File) > 0 {
-							for _, chunk := range processedFile.File {
-								select {
-								case chunkCh <- chunk:
-								case <-ctx.Done():
-									return
-								}
-							}
-
-							if err := s.sendFileDoneSignal(ctx, originalUserID, originalFilePath, "GOOGLE"); err != nil {
-								log.Printf("Error sending file done signal for %s: %v", originalFilePath, err)
-							}
-						} else {
-							log.Printf("No chunks generated for file: %s", originalFilePath)
-						}
-
-						resultCh <- result{index: f.index, file: processedFile}
-					}(files[j])
-				}
-				batchWg.Wait()
+		case "application/vnd.google-apps.presentation":
+			numWorkers, err = strconv.Atoi(os.Getenv("CRAWLING_GOOGLESLIDES_MAX_WORKERS"))
+			if err != nil {
+				fmt.Printf("Warning: failed to retrieve the k value from the env variables: %v", err)
 			}
-		}(mimeType, files)
+		}
+
+		// Create worker pool for this MIME type
+		for i := 0; i < numWorkers; i++ {
+			wg.Add(1)
+			go func(mimeType string, workerID int, items []workItem) {
+				defer wg.Done()
+				handler, ok := mimeHandlers[mimeType]
+				if !ok {
+					for _, item := range items {
+						resultCh <- result{index: item.index, file: item.file}
+					}
+					return
+				}
+
+				for j := workerID; j < len(items); j += numWorkers {
+					item := items[j]
+					originalFilePath := item.file.File[0].Metadata.FilePath
+					originalUserID := item.file.File[0].Metadata.UserID
+					originalResourceID := item.file.File[0].Metadata.ResourceID
+					if s.isFileProcessed(originalUserID, originalResourceID, "GOOGLE") {
+						resultCh <- result{index: item.index, file: item.file}
+						continue
+					}
+
+					processedFile, err := handler(ctx, client, item.file)
+					if err != nil {
+						resultCh <- result{index: item.index, err: fmt.Errorf("error processing file %s: %w", originalResourceID, err)}
+						continue
+					}
+
+					if len(processedFile.File) > 0 {
+						for _, chunk := range processedFile.File {
+							select {
+							case chunkCh <- chunk:
+							case <-ctx.Done():
+								return
+							}
+						}
+
+						if err := s.sendFileDoneSignal(ctx, originalUserID, originalFilePath, "GOOGLE"); err != nil {
+							log.Printf("Error sending file done signal for %s: %v", originalFilePath, err)
+						}
+					} else {
+						log.Printf("No chunks generated for file: %s", originalFilePath)
+					}
+
+					resultCh <- result{index: item.index, file: processedFile}
+				}
+			}(mimeType, i, items)
+		}
 	}
 
 	go func() {
@@ -438,15 +433,14 @@ func (s *crawlingServer) ProcessAllGoogleDriveFiles(ctx context.Context, client 
 	chunkWg.Wait()
 
 	if len(errs) > 0 {
-		return ListofFiles{Files: processedFiles}, fmt.Errorf("some files failed to process: %v", errs)
+		return fmt.Errorf("some files failed to process: %v", errs)
 	}
 	if userID != "" {
 		log.Printf("Drive crawling complete for user %s", userID)
 	} else {
 		log.Print("No valid files found in Drive crawl")
 	}
-
-	return ListofFiles{Files: processedFiles}, nil
+	return nil
 }
 
 // GetStartPageToken retrieves the start page token for Google Drive changes
