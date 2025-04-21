@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"google.golang.org/api/option"
@@ -18,11 +20,32 @@ type SlidesProcessor struct {
 	baseOverlapSize uint64
 }
 
+// SlideElementType represents different types of content in a slide
+type SlideElementType string
+
+const (
+	SlideElementTypeText  SlideElementType = "text"
+	SlideElementTypeTable SlideElementType = "table"
+	//SlideElementTypeImage SlideElementType = "image"
+	//SlideElementTypeVideo SlideElementType = "video"
+	SlideElementTypeChart SlideElementType = "chart"
+	SlideElementTypeShape SlideElementType = "shape"
+)
+
+// SlidePosition stores the exact position of content within a slide
+type SlidePosition struct {
+	ElementType  SlideElementType
+	SlideIndex   int
+	GroupIndex   int
+	ElementIndex int
+	Offset       int
+}
+
 // SlideWordInfo stores word position information efficiently
 type SlideWordInfo struct {
-	SlideIndex  int
-	SlideOffset int
-	Word        string
+	Position SlidePosition
+	Word     string
+	Length   int
 }
 
 // NewSlidesProcessor initializes a new SlidesProcessor with a Google Slides service
@@ -54,11 +77,11 @@ func (sp *SlidesProcessor) SlidesProcess(ctx context.Context, file File) (File, 
 	if err != nil {
 		return file, err
 	}
+
 	chunks, err := sp.ChunkPresentation(doc, metadata)
 	if err != nil {
 		return file, err
 	}
-
 	return File{File: chunks}, nil
 }
 
@@ -73,12 +96,12 @@ func (sp *SlidesProcessor) SlidesRetrieve(ctx context.Context, metadata Metadata
 		return TextChunkMessage{}, err
 	}
 
-	startPara, startOffset, endPara, endOffset, err := sp.ParseSlidesChunkID(metadata.ChunkID)
+	startSlide, startElement, startOffset, endSlide, endElement, endOffset, err := sp.ParseSlidesChunkID(metadata.ChunkID)
 	if err != nil {
 		return TextChunkMessage{}, err
 	}
 
-	chunkWords, err := sp.ExtractSlidesChunk(doc, startPara, startOffset, endPara, endOffset)
+	chunkWords, err := sp.ExtractSlidesChunk(doc, startSlide, startElement, startOffset, endSlide, endElement, endOffset)
 	if err != nil {
 		return TextChunkMessage{}, err
 	}
@@ -111,20 +134,94 @@ func (sp *SlidesProcessor) SlidesFetchDocument(ctx context.Context, resourceID s
 	return presentation, nil
 }
 
-// ChunkPresentation splits a Google Slides presentation into text chunks
-func (sp *SlidesProcessor) ChunkPresentation(presentation *slides.Presentation, baseMetadata Metadata) ([]TextChunkMessage, error) {
-	var chunks []TextChunkMessage
-
-	wordInfoList := make([]SlideWordInfo, 0, 1000)
+// extractAllWords extracts all words from a presentation with their positions
+func (sp *SlidesProcessor) extractAllWords(presentation *slides.Presentation) ([]SlideWordInfo, error) {
+	wordInfoList := make([]SlideWordInfo, 0, 5000)
 
 	for slideIndex, slide := range presentation.Slides {
-		slideOffset := 0
-		for _, element := range slide.PageElements {
-			if element.Shape == nil || element.Shape.Text == nil {
-				continue
-			}
+		wordInfoList = sp.extractWordsFromSlide(slide, slideIndex, wordInfoList)
+	}
 
-			for _, textElem := range element.Shape.Text.TextElements {
+	return wordInfoList, nil
+}
+
+// extractWordsFromSlide processes a single slide and extracts words from all its elements
+func (sp *SlidesProcessor) extractWordsFromSlide(slide *slides.Page, slideIndex int, wordInfoList []SlideWordInfo) []SlideWordInfo {
+	for elementIndex, element := range slide.PageElements {
+		switch {
+		case element.Shape != nil:
+			wordInfoList = sp.extractWordsFromShape(element.Shape, slideIndex, elementIndex, wordInfoList)
+		case element.Table != nil:
+			wordInfoList = sp.extractWordsFromTable(element.Table, slideIndex, elementIndex, wordInfoList)
+			// case element.Image != nil:
+			// 	if element.Image.ContentUrl != "" {
+			// 		wordInfoList = append(wordInfoList, SlideWordInfo{
+			// 			Position: SlidePosition{
+			// 				ElementType:  SlideElementTypeImage,
+			// 				SlideIndex:   slideIndex,
+			// 				ElementIndex: elementIndex,
+			// 				Offset:       0,
+			// 			},
+			// 			Word:   element.Image.ContentUrl,
+			// 			Length: len(element.Image.ContentUrl),
+			// 		})
+			// 	}
+			// case element.Video != nil:
+			// 	if element.Video.Url != "" {
+			// 		wordInfoList = append(wordInfoList, SlideWordInfo{
+			// 			Position: SlidePosition{
+			// 				ElementType:  SlideElementTypeVideo,
+			// 				SlideIndex:   slideIndex,
+			// 				ElementIndex: elementIndex,
+			// 				Offset:       0,
+			// 			},
+			// 			Word:   element.Video.Url,
+			// 			Length: len(element.Video.Url),
+			// 		})
+			// 	}
+		}
+	}
+
+	return wordInfoList
+}
+
+// extractWordsFromShape processes a shape element and extracts its text content
+func (sp *SlidesProcessor) extractWordsFromShape(shape *slides.Shape, slideIndex, elementIndex int, wordInfoList []SlideWordInfo) []SlideWordInfo {
+	if shape.Text == nil {
+		return wordInfoList
+	}
+
+	offset := 0
+	for _, textElem := range shape.Text.TextElements {
+		if textElem.TextRun == nil {
+			continue
+		}
+		content := strings.NewReplacer("\n", " ", "\r", " ").Replace(textElem.TextRun.Content)
+		words := strings.Fields(content)
+
+		for _, word := range words {
+			wordInfoList = append(wordInfoList, SlideWordInfo{
+				Position: SlidePosition{
+					ElementType:  SlideElementTypeShape,
+					SlideIndex:   slideIndex,
+					ElementIndex: elementIndex,
+					Offset:       offset,
+				},
+				Word:   word,
+				Length: len(word),
+			})
+			offset += len(word) + 1
+		}
+	}
+	return wordInfoList
+}
+
+// extractWordsFromTable processes a table element and extracts text from all cells
+func (sp *SlidesProcessor) extractWordsFromTable(table *slides.Table, slideIndex, elementIndex int, wordInfoList []SlideWordInfo) []SlideWordInfo {
+	for rowIndex, row := range table.TableRows {
+		for cellIndex, cell := range row.TableCells {
+			offset := 0
+			for _, textElem := range cell.Text.TextElements {
 				if textElem.TextRun == nil {
 					continue
 				}
@@ -134,19 +231,35 @@ func (sp *SlidesProcessor) ChunkPresentation(presentation *slides.Presentation, 
 
 				for _, word := range words {
 					wordInfoList = append(wordInfoList, SlideWordInfo{
-						SlideIndex:  slideIndex,
-						SlideOffset: slideOffset,
-						Word:        word,
+						Position: SlidePosition{
+							ElementType:  SlideElementTypeTable,
+							SlideIndex:   slideIndex,
+							ElementIndex: elementIndex,
+							GroupIndex:   rowIndex*len(row.TableCells) + cellIndex,
+							Offset:       offset,
+						},
+						Word:   word,
+						Length: len(word),
 					})
-					slideOffset += len(word) + 1
+					offset += len(word) + 1
 				}
 			}
 		}
 	}
+	return wordInfoList
+}
+
+// ChunkPresentation splits a Google Slides presentation into text chunks
+func (sp *SlidesProcessor) ChunkPresentation(presentation *slides.Presentation, baseMetadata Metadata) ([]TextChunkMessage, error) {
+	var chunks []TextChunkMessage
+
+	wordInfoList, err := sp.extractAllWords(presentation)
+	if err != nil {
+		return nil, err
+	}
 
 	totalWords := len(wordInfoList)
 	for startIndex := 0; startIndex < totalWords; startIndex += int(sp.baseChunkSize) - int(sp.baseOverlapSize) {
-
 		endIndex := startIndex + int(sp.baseChunkSize)
 		if endIndex > totalWords {
 			endIndex = totalWords
@@ -163,9 +276,9 @@ func (sp *SlidesProcessor) ChunkPresentation(presentation *slides.Presentation, 
 
 		startInfo := wordInfoList[startIndex]
 		endInfo := wordInfoList[endIndex-1]
-		endOffset := endInfo.SlideOffset + len(endInfo.Word)
+		endOffset := endInfo.Position.Offset + endInfo.Length
 
-		chunk, err := sp.CreateSlidesChunk(chunkWords, baseMetadata, startInfo.SlideIndex, startInfo.SlideOffset, endInfo.SlideIndex, endOffset)
+		chunk, err := sp.CreateSlidesChunk(chunkWords, baseMetadata, startInfo.Position.SlideIndex, startInfo.Position.ElementIndex, startInfo.Position.Offset, endInfo.Position.SlideIndex, endInfo.Position.ElementIndex, endOffset)
 		if err != nil {
 			return nil, err
 		}
@@ -175,29 +288,54 @@ func (sp *SlidesProcessor) ChunkPresentation(presentation *slides.Presentation, 
 	return chunks, nil
 }
 
-// createChunk constructs a TextChunkMessage with metadata
-func (sp *SlidesProcessor) CreateSlidesChunk(words []string, baseMetadata Metadata, startSlide, startOffset, endSlide, endOffset int) (TextChunkMessage, error) {
-	chunkMetadata := baseMetadata
-	chunkMetadata.ChunkID = fmt.Sprintf("%d-%d-%d-%d", startSlide, startOffset, endSlide, endOffset)
-
-	return TextChunkMessage{
-		Metadata: chunkMetadata,
-		Content:  strings.Join(words, " "),
-	}, nil
-}
-
 // parseChunkID extracts chunk boundaries from the ChunkID string
-func (sp *SlidesProcessor) ParseSlidesChunkID(chunkID string) (startSlide, startOffset, endSlide, endOffset int, err error) {
-	_, err = fmt.Sscanf(chunkID, "%d-%d-%d-%d", &startSlide, &startOffset, &endSlide, &endOffset)
-	if err != nil {
-		return 0, 0, 0, 0, fmt.Errorf("invalid ChunkID format: %w", err)
+func (sp *SlidesProcessor) ParseSlidesChunkID(chunkID string) (startSlide, startElement, startOffset, endSlide, endElement, endOffset int, err error) {
+	parts := strings.Split(chunkID, "-End{")
+	if len(parts) != 2 {
+		return 0, 0, 0, 0, 0, 0, fmt.Errorf("invalid ChunkID format: missing End section")
 	}
 
-	return startSlide, startOffset, endSlide, endOffset, nil
+	startPart := strings.TrimPrefix(parts[0], "Start{")
+	startPart = strings.TrimSuffix(startPart, "}")
+	startFields := strings.Split(startPart, ",")
+	if len(startFields) != 4 {
+		return 0, 0, 0, 0, 0, 0, fmt.Errorf("invalid start position format: expected 4 fields, got %d", len(startFields))
+	}
+
+	endPart := strings.TrimPrefix(parts[1], "End{")
+	endPart = strings.TrimSuffix(endPart, "}")
+	endFields := strings.Split(endPart, ",")
+	if len(endFields) != 4 {
+		return 0, 0, 0, 0, 0, 0, fmt.Errorf("invalid end position format: expected 4 fields, got %d", len(endFields))
+	}
+
+	startType := strings.TrimPrefix(startFields[0], "Type:")
+	startSlide, _ = strconv.Atoi(strings.TrimPrefix(startFields[1], "Slide:"))
+	startElement, _ = strconv.Atoi(strings.TrimPrefix(startFields[2], "Element:"))
+	startOffset, _ = strconv.Atoi(strings.TrimPrefix(startFields[3], "Offset:"))
+
+	endType := strings.TrimPrefix(endFields[0], "Type:")
+	endSlide, _ = strconv.Atoi(strings.TrimPrefix(endFields[1], "Slide:"))
+	endElement, _ = strconv.Atoi(strings.TrimPrefix(endFields[2], "Element:"))
+	endOffset, _ = strconv.Atoi(strings.TrimPrefix(endFields[3], "Offset:"))
+
+	if startType != string(SlideElementTypeShape) || endType != string(SlideElementTypeShape) {
+		return 0, 0, 0, 0, 0, 0, fmt.Errorf("unsupported element type: start=%s, end=%s", startType, endType)
+	}
+
+	if startSlide > endSlide {
+		return 0, 0, 0, 0, 0, 0, fmt.Errorf("invalid slide range: start=%d, end=%d", startSlide, endSlide)
+	}
+
+	if startSlide == endSlide && startElement > endElement {
+		return 0, 0, 0, 0, 0, 0, fmt.Errorf("invalid element range within slide %d: start=%d, end=%d", startSlide, startElement, endElement)
+	}
+
+	return startSlide, startElement, startOffset, endSlide, endElement, endOffset, nil
 }
 
 // extractSlidesChunk retrieves words for a specific chunk based on slide and offset boundaries
-func (sp *SlidesProcessor) ExtractSlidesChunk(presentation *slides.Presentation, startSlide, startOffset, endSlide, endOffset int) ([]string, error) {
+func (sp *SlidesProcessor) ExtractSlidesChunk(presentation *slides.Presentation, startSlide, startElement, startOffset, endSlide, endElement, endOffset int) ([]string, error) {
 	var chunkWords []string
 
 	slideMap := make(map[int]*slides.Page, len(presentation.Slides))
@@ -208,34 +346,78 @@ func (sp *SlidesProcessor) ExtractSlidesChunk(presentation *slides.Presentation,
 	for slideIdx := startSlide; slideIdx <= endSlide; slideIdx++ {
 		slide, exists := slideMap[slideIdx]
 		if !exists {
+			log.Printf("Warning: Slide %d not found\n", slideIdx)
 			continue
 		}
-
 		slideWords := make([]string, 0, 100)
 		slideOffsets := make([]int, 0, 100)
 		slideOffset := 0
+		slideWordCount := 0
 
-		for _, element := range slide.PageElements {
-			if element.Shape == nil || element.Shape.Text == nil {
+		for elementIndex, element := range slide.PageElements {
+			if slideIdx == startSlide && elementIndex < startElement {
+				continue
+			}
+			if slideIdx == endSlide && elementIndex > endElement {
 				continue
 			}
 
-			for _, textElem := range element.Shape.Text.TextElements {
-				if textElem.TextRun == nil {
-					continue
-				}
+			var wordCount int
 
-				content := strings.NewReplacer("\n", " ", "\r", " ").Replace(textElem.TextRun.Content)
-				words := strings.Fields(content)
+			switch {
+			case element.Shape != nil && element.Shape.Text != nil:
+				for _, textElem := range element.Shape.Text.TextElements {
+					if textElem.TextRun == nil {
+						continue
+					}
 
-				for _, word := range words {
-					slideWords = append(slideWords, word)
-					slideOffsets = append(slideOffsets, slideOffset)
-					slideOffset += len(word) + 1
+					content := strings.NewReplacer("\n", " ", "\r", " ").Replace(textElem.TextRun.Content)
+					words := strings.Fields(content)
+					wordCount += len(words)
+
+					for _, word := range words {
+						slideWords = append(slideWords, word)
+						slideOffsets = append(slideOffsets, slideOffset)
+						slideOffset += len(word) + 1
+					}
 				}
+			case element.Table != nil:
+				for _, row := range element.Table.TableRows {
+					for _, cell := range row.TableCells {
+						for _, textElem := range cell.Text.TextElements {
+							if textElem.TextRun == nil {
+								continue
+							}
+
+							content := strings.NewReplacer("\n", " ", "\r", " ").Replace(textElem.TextRun.Content)
+							words := strings.Fields(content)
+							wordCount += len(words)
+
+							for _, word := range words {
+								slideWords = append(slideWords, word)
+								slideOffsets = append(slideOffsets, slideOffset)
+								slideOffset += len(word) + 1
+							}
+						}
+					}
+				}
+			// case element.Image != nil && element.Image.ContentUrl != "":
+			// 	slideWords = append(slideWords, element.Image.ContentUrl)
+			// 	slideOffsets = append(slideOffsets, slideOffset)
+			// 	slideOffset += len(element.Image.ContentUrl) + 1
+			// 	wordCount = 1
+			// case element.Video != nil && element.Video.Url != "":
+			// 	slideWords = append(slideWords, element.Video.Url)
+			// 	slideOffsets = append(slideOffsets, slideOffset)
+			// 	slideOffset += len(element.Video.Url) + 1
+			// 	wordCount = 1
+			default:
+				continue
 			}
+			slideWordCount += wordCount
 		}
 
+		wordsAdded := 0
 		for i, offset := range slideOffsets {
 			if i >= len(slideWords) {
 				break
@@ -254,16 +436,25 @@ func (sp *SlidesProcessor) ExtractSlidesChunk(presentation *slides.Presentation,
 
 			if inChunk {
 				chunkWords = append(chunkWords, slideWords[i])
+				wordsAdded++
 			}
 		}
 	}
 
-	if len(chunkWords) == 0 {
-		return nil, fmt.Errorf("no content found for chunk with boundaries StartSlide:%d-StartOffset:%d-EndSlide:%d-EndOffset:%d",
-			startSlide, startOffset, endSlide, endOffset)
-	}
-
 	return chunkWords, nil
+}
+
+// CreateSlidesChunk constructs a TextChunkMessage with metadata
+func (sp *SlidesProcessor) CreateSlidesChunk(words []string, baseMetadata Metadata, startSlide, startElement, startOffset, endSlide, endElement, endOffset int) (TextChunkMessage, error) {
+	chunkMetadata := baseMetadata
+	chunkMetadata.ChunkID = fmt.Sprintf("Start{Type:%s,Slide:%d,Element:%d,Offset:%d}-End{Type:%s,Slide:%d,Element:%d,Offset:%d}",
+		SlideElementTypeShape, startSlide, startElement, startOffset,
+		SlideElementTypeShape, endSlide, endElement, endOffset)
+
+	return TextChunkMessage{
+		Metadata: chunkMetadata,
+		Content:  strings.Join(words, " "),
+	}, nil
 }
 
 // ProcessGoogleSlides processes a Google Slides presentation into chucks
