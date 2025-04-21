@@ -1,4 +1,4 @@
-import { fail, type Cookies } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { GO_BACKEND_URL } from '$env/static/private';
 
@@ -52,13 +52,12 @@ export const actions = {
   default: async ({ request, cookies }) => {
     const data = await request.formData();
     const email = data.get('email');
-    const password = data.get('password');
     const name = data.get('name');
+    const password = data.get('password');
 
-    // Basic validation
-    if (!email || !password || !name) {
+    if (!email || !name || !password) {
       return fail(400, {
-        error: 'Email, password and name are required',
+        error: 'Email, name, and password are required',
         email: email?.toString(),
         name: name?.toString()
       });
@@ -69,23 +68,26 @@ export const actions = {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ email: email, name: name, password: password })
+      body: JSON.stringify({ email, name, password })
     });
 
     if (!registerRes.ok) {
       const msg = await registerRes.text();
-
-      // Return an error to the page to display
       return fail(registerRes.status, { error: msg });
     }
 
     const response = await registerRes.json();
-
-    if (response.success) {
-      await login(email.toString(), password.toString(), cookies);
-      return { success: true };
-    } else {
+    if (!response.success) {
       return fail(400, { error: response.error });
     }
+
+    cookies.set('pendingRegisterToken', response.token, {
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 300, // 5 minutes
+    });
+    return { success: true };
   }
 } satisfies Actions;

@@ -18,11 +18,11 @@
     <Button
       href={item.url}
       variant={"ghost"}
-      class={`w-full justify-start gap-2 rounded-lg hover:bg-[#e6e4e3] ${isActive ? "bg-[#e6e4e3]" : ""}`}
+      class={`w-full justify-start gap-2 rounded-lg hover:bg-[#e6e4e3] ${isActive ? "bg-[#e6e4e3] text-gray-700" : "text-gray-500"}`}
       aria-label={item.label}
     >
-      <svelte:component this={item.icon} class="size-5"/>
-      <span class="font-sm">{item.label}</span>
+      <svelte:component this={item.icon} class="size-5 ml-0.5"/>
+      <span class="font-sm ml-1">{item.label}</span>
     </Button>
 
   </div>

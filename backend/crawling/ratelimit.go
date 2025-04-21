@@ -43,7 +43,7 @@ func NewRateLimiterService() *RateLimiterService {
 		"GOOGLE_SLIDES": {10, 20},   // Increased from 10 to 20 req/s per user
 		"GOOGLE_GMAIL":  {250, 500}, // Increased from 250 to 500 req/s per user
 		"GOOGLE_DRIVE":  {100, 200}, // Increased from 100 to 200 req/s per user
-		"NOTION":        {10, 100},  // Kept the same due to Notion's strict limits
+		"NOTION":        {3, 3},     // Increased from 3 to 3 req/s per user
 	}
 
 	// Project-wide rate limits
@@ -52,7 +52,7 @@ func NewRateLimiterService() *RateLimiterService {
 		"GOOGLE_SLIDES": {50, 100},      // Increased from 50 to 100 req/s
 		"GOOGLE_DRIVE":  {200, 400},     // Increased from 200 to 400 req/s
 		"GOOGLE_GMAIL":  {20000, 25000}, // Increased from 20000 to 25000 req/s
-		"NOTION":        {100, 1000},    // Kept the same
+		"NOTION":        {3, 3},         // Increased from 3 to 3 req/s
 	}
 
 	projectLimiters := make(map[string]*rate.Limiter)

@@ -14,11 +14,11 @@ type RedisClient struct {
 	Client *redis.Client
 }
 
-func NewRedisClient(ctx context.Context) (*RedisClient, error) {
+func NewRedisClient(ctx context.Context, db int) (*RedisClient, error) {
 	rdb := redis.NewClient(&redis.Options{
 		Addr: os.Getenv("REDIS_ADDRESS"),
 		Password: os.Getenv("REDIS_PASSWORD"),
-		DB: 0,
+		DB: db,
 	})
 
 	_, err := rdb.Ping(ctx).Result()
@@ -64,3 +64,50 @@ func (c *RedisClient) ValidateOAuthState(ctx context.Context, state string) (str
     return userId, nil
 }
 
+func (c *RedisClient) Incr(ctx context.Context, key string, amount int64) (int64, error) {
+	count, err := c.Client.IncrBy(ctx, key, amount).Result()
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment key: %w", err)
+	}
+	return count, nil
+}
+
+func (c *RedisClient) Expire(ctx context.Context, key string, duration time.Duration) error {
+	err := c.Client.Expire(ctx, key, duration).Err()
+	if err != nil {
+		return fmt.Errorf("failed to expire key: %w", err)
+	}
+	return nil
+}
+
+func (c *RedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	err := c.Client.Set(ctx, key, value, expiration).Err()
+	if err != nil {
+		return fmt.Errorf("failed to set key: %w", err)
+	}
+	return nil
+}
+
+func (c *RedisClient) Get(ctx context.Context, key string) (string, error) {
+	value, err := c.Client.Get(ctx, key).Result()
+	if err != nil {
+		return "", fmt.Errorf("failed to get key: %w", err)
+	}
+	return value, nil
+}
+
+func (c *RedisClient) Del(ctx context.Context, key string) error {
+	err := c.Client.Del(ctx, key).Err()
+	if err != nil {
+		return fmt.Errorf("failed to delete key: %w", err)
+	}
+	return nil
+}
+
+func (c *RedisClient) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) (bool, error) {
+	success, err := c.Client.SetNX(ctx, key, value, expiration).Result()
+	if err != nil {
+		return false, fmt.Errorf("failed to setnx key: %w", err)
+	}
+	return success, nil
+}

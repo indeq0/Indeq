@@ -26,12 +26,14 @@ import (
 
 type vectorServer struct {
 	pb.UnimplementedVectorServiceServer
-	milvusClient    client.Client
-	embeddingConn   *grpc.ClientConn
-	embeddingClient pb.EmbeddingServiceClient
-	desktopWriter   *kafka.Writer
-	crawlingWriter  *kafka.Writer
-	collectionName  string
+	milvusClient            client.Client
+	embeddingConn           *grpc.ClientConn
+	embeddingClient         pb.EmbeddingServiceClient
+	desktopWriter           *kafka.Writer
+	googleCrawlingWriter    *kafka.Writer
+	notionCrawlingWriter    *kafka.Writer
+	microsoftCrawlingWriter *kafka.Writer
+	collectionName          string
 }
 
 // func(context):
@@ -174,11 +176,46 @@ func (s *vectorServer) startTextChunkProcess(ctx context.Context) error {
 							Value: byteMessage,
 						}
 
-						if err := s.crawlingWriter.WriteMessages(ctx, message); err != nil {
+						if err := s.googleCrawlingWriter.WriteMessages(ctx, message); err != nil {
+							log.Print("error: ", err)
+							continue
+						}
+					} else if textChunk.Metadata.Platform == pb.Platform_PLATFORM_NOTION {
+						fileDoneMessage := &pb.FileDoneProcessing{
+							UserId:   textChunk.Metadata.UserId,
+							FilePath: textChunk.Metadata.FilePath,
+						}
+						byteMessage, err := proto.Marshal(fileDoneMessage)
+						if err != nil {
+							log.Print("failed to serialized file done message: ", err)
+							continue
+						}
+						message := kafka.Message{
+							Value: byteMessage,
+						}
+						if err := s.notionCrawlingWriter.WriteMessages(ctx, message); err != nil {
+							log.Print("error: ", err)
+							continue
+						}
+					} else if textChunk.Metadata.Platform == pb.Platform_PLATFORM_MICROSOFT {
+						fileDoneMessage := &pb.FileDoneProcessing{
+							UserId:   textChunk.Metadata.UserId,
+							FilePath: textChunk.Metadata.FilePath,
+						}
+						byteMessage, err := proto.Marshal(fileDoneMessage)
+						if err != nil {
+							log.Print("failed to serialized file done message: ", err)
+							continue
+						}
+						message := kafka.Message{
+							Value: byteMessage,
+						}
+						if err := s.microsoftCrawlingWriter.WriteMessages(ctx, message); err != nil {
 							log.Print("error: ", err)
 							continue
 						}
 					}
+
 					// TODO: send the signals to other platform topics
 				} else if textChunk.Content == "<crawl_done>" {
 					if textChunk.Metadata == nil {
@@ -218,7 +255,43 @@ func (s *vectorServer) startTextChunkProcess(ctx context.Context) error {
 							Value: byteMessage,
 						}
 
-						if err := s.crawlingWriter.WriteMessages(ctx, message); err != nil {
+						if err := s.googleCrawlingWriter.WriteMessages(ctx, message); err != nil {
+							log.Print("error: ", err)
+							continue
+						}
+					} else if textChunk.Metadata.Platform == pb.Platform_PLATFORM_NOTION {
+						fileDoneMessage := &pb.FileDoneProcessing{
+							UserId:       textChunk.Metadata.UserId,
+							CrawlingDone: true,
+						}
+						byteMessage, err := proto.Marshal(fileDoneMessage)
+						if err != nil {
+							log.Print("failed to serialized file done message: ", err)
+							continue
+						}
+						message := kafka.Message{
+							Value: byteMessage,
+						}
+
+						if err := s.notionCrawlingWriter.WriteMessages(ctx, message); err != nil {
+							log.Print("error: ", err)
+							continue
+						}
+					} else if textChunk.Metadata.Platform == pb.Platform_PLATFORM_MICROSOFT {
+						fileDoneMessage := &pb.FileDoneProcessing{
+							UserId:       textChunk.Metadata.UserId,
+							CrawlingDone: true,
+						}
+						byteMessage, err := proto.Marshal(fileDoneMessage)
+						if err != nil {
+							log.Print("failed to serialized file done message: ", err)
+							continue
+						}
+						message := kafka.Message{
+							Value: byteMessage,
+						}
+
+						if err := s.microsoftCrawlingWriter.WriteMessages(ctx, message); err != nil {
 							log.Print("error: ", err)
 							continue
 						}
@@ -297,13 +370,13 @@ func (s *vectorServer) createDesktopWriter() {
 //   - creates a kafka writer interface for writing crawling signals like (crawl_done, etc.)
 //   - assumes: that a topic called 'crawling-signals' has already been created elsewhere (like in an init routine)
 //   - assumes: you will close the writer elsewhere in the parent once you are done using it
-func (s *vectorServer) createCrawlingWriter() {
+func (s *vectorServer) createGoogleCrawlingWriter() {
 	broker, ok := os.LookupEnv("KAFKA_BROKER_ADDRESS")
 	if !ok {
 		log.Fatal("failed to retrieve kafka broker address")
 	}
 
-	crawlingWriter := &kafka.Writer{
+	googleCrawlingWriter := &kafka.Writer{
 		Addr:         kafka.TCP(broker),
 		Topic:        "google-crawling-signals",
 		Balancer:     &kafka.LeastBytes{},
@@ -313,11 +386,57 @@ func (s *vectorServer) createCrawlingWriter() {
 		Async:        true, // will not wait for the batch timeout to send messages
 		Completion: func(messages []kafka.Message, err error) {
 			if err != nil {
-				log.Printf("encountered error while writing message to crawling-signals: %v", err)
+				log.Printf("encountered error while writing message to google-crawling-signals: %v", err)
 			}
 		},
 	}
-	s.crawlingWriter = crawlingWriter
+	s.googleCrawlingWriter = googleCrawlingWriter
+}
+
+func (s *vectorServer) createNotionCrawlingWriter() {
+	broker, ok := os.LookupEnv("KAFKA_BROKER_ADDRESS")
+	if !ok {
+		log.Fatal("failed to retrieve kafka broker address")
+	}
+
+	notionCrawlingWriter := &kafka.Writer{
+		Addr:         kafka.TCP(broker),
+		Topic:        "notion-crawling-signals",
+		Balancer:     &kafka.LeastBytes{},
+		BatchSize:    10,
+		BatchTimeout: 1 * time.Second,
+		Compression:  kafka.Lz4,
+		Async:        true, // will not wait for the batch timeout to send messages
+		Completion: func(messages []kafka.Message, err error) {
+			if err != nil {
+				log.Printf("encountered error while writing message to notion-crawling-signals: %v", err)
+			}
+		},
+	}
+	s.notionCrawlingWriter = notionCrawlingWriter
+}
+
+func (s *vectorServer) createMicrosoftCrawlingWriter() {
+	broker, ok := os.LookupEnv("KAFKA_BROKER_ADDRESS")
+	if !ok {
+		log.Fatal("failed to retrieve kafka broker address")
+	}
+
+	microsoftCrawlingWriter := &kafka.Writer{
+		Addr:         kafka.TCP(broker),
+		Topic:        "microsoft-crawling-signals",
+		Balancer:     &kafka.LeastBytes{},
+		BatchSize:    10,
+		BatchTimeout: 1 * time.Second,
+		Compression:  kafka.Lz4,
+		Async:        true, // will not wait for the batch timeout to send messages
+		Completion: func(messages []kafka.Message, err error) {
+			if err != nil {
+				log.Printf("encountered error while writing message to microsoft-crawling-signals: %v", err)
+			}
+		},
+	}
+	s.microsoftCrawlingWriter = microsoftCrawlingWriter
 }
 
 // func(context)
@@ -434,8 +553,14 @@ func main() {
 	defer server.desktopWriter.Close()
 
 	// connect to crawling kafka
-	server.createCrawlingWriter()
-	defer server.crawlingWriter.Close()
+	server.createGoogleCrawlingWriter()
+	defer server.googleCrawlingWriter.Close()
+
+	server.createNotionCrawlingWriter()
+	defer server.notionCrawlingWriter.Close()
+
+	server.createMicrosoftCrawlingWriter()
+	defer server.microsoftCrawlingWriter.Close()
 
 	// TODO: create other writers to signal for google drive, microsoft office, notion, etc.
 

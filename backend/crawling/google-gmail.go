@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,42 +20,44 @@ type CrawlResult struct {
 	Err   error
 }
 
-func (s *crawlingServer) CrawlGmail(ctx context.Context, client *http.Client, userID string) (ListofFiles, error) {
-	result, retrievalToken, err := s.GetGoogleGmailList(ctx, client, userID)
+func (s *crawlingServer) CrawlGmail(ctx context.Context, client *http.Client, userID string) error {
+	retrievalToken, err := s.ProcessGmailMessages(ctx, client, userID)
 	if err != nil {
-		return ListofFiles{}, fmt.Errorf("error retrieving Google Gmail file list: %w", err)
+		return fmt.Errorf("error processing Google Gmail messages: %w", err)
 	}
 
 	if err := StoreGoogleGmailToken(ctx, s.db, userID, retrievalToken); err != nil {
-		return ListofFiles{}, fmt.Errorf("failed to store change token: %w", err)
+		return fmt.Errorf("failed to store change token: %w", err)
 	}
-	return result, nil
+	return nil
 }
 
-func (s *crawlingServer) UpdateCrawlGmail(ctx context.Context, client *http.Client, userID string, retrievalToken string) (string, ListofFiles, error) {
+func (s *crawlingServer) UpdateCrawlGmail(ctx context.Context, client *http.Client, userID string, retrievalToken string) (string, error) {
 	tokenUint64, err := strconv.ParseUint(retrievalToken, 10, 64)
 	if err != nil {
-		result, newToken, err := s.GetGoogleGmailList(ctx, client, userID)
-		return newToken, result, err
+		newToken, err := s.ProcessGmailMessages(ctx, client, userID)
+		if err != nil {
+			return "", err
+		}
+		return newToken, nil
 	}
-	result, newRetrievalToken, err := s.CrawlGmailHistory(ctx, client, userID, tokenUint64)
+	newRetrievalToken, err := s.CrawlGmailHistory(ctx, client, userID, tokenUint64)
 	if err != nil {
 		if strings.Contains(err.Error(), "Error 404") ||
 			strings.Contains(err.Error(), "failedPrecondition") {
-			return retrievalToken, ListofFiles{}, nil
+			return retrievalToken, nil
 		}
-		return "", ListofFiles{}, err
+		return "", err
 	}
-	return newRetrievalToken, result, nil
+	return newRetrievalToken, nil
 }
 
-func (s *crawlingServer) CrawlGmailHistory(ctx context.Context, client *http.Client, userID string, lastHistoryID uint64) (ListofFiles, string, error) {
+func (s *crawlingServer) CrawlGmailHistory(ctx context.Context, client *http.Client, userID string, lastHistoryID uint64) (string, error) {
 	srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return ListofFiles{}, "", fmt.Errorf("failed to create Gmail service: %w", err)
+		return "", fmt.Errorf("failed to create Gmail service: %w", err)
 	}
 
-	var files []File
 	var latestHistoryID = lastHistoryID
 	historyCall := srv.Users.History.List("me").
 		StartHistoryId(lastHistoryID).
@@ -67,12 +70,12 @@ func (s *crawlingServer) CrawlGmailHistory(ctx context.Context, client *http.Cli
 		}
 
 		if err := rateLimiter.Wait(ctx, "GOOGLE_GMAIL", userID); err != nil {
-			return ListofFiles{}, "", err
+			return "", err
 		}
 
 		res, err := historyCall.Do()
 		if err != nil {
-			return ListofFiles{}, "", fmt.Errorf("failed to fetch Gmail history: %w", err)
+			return "", fmt.Errorf("failed to fetch Gmail history: %w", err)
 		}
 
 		for _, history := range res.History {
@@ -86,7 +89,7 @@ func (s *crawlingServer) CrawlGmailHistory(ctx context.Context, client *http.Cli
 					}
 					file, err := processMessage(fullMsg, userID)
 					if err == nil {
-						if len(file.File) > 0 && s.isFileProcessed(userID, file.File[0].Metadata.ResourceID) {
+						if len(file.File) > 0 && s.isFileProcessed(userID, file.File[0].Metadata.ResourceID, "GOOGLE") {
 							continue
 						}
 
@@ -101,7 +104,6 @@ func (s *crawlingServer) CrawlGmailHistory(ctx context.Context, client *http.Cli
 							}
 						}
 
-						files = append(files, file)
 						if fullMsg.HistoryId > latestHistoryID {
 							latestHistoryID = fullMsg.HistoryId
 						}
@@ -116,19 +118,21 @@ func (s *crawlingServer) CrawlGmailHistory(ctx context.Context, client *http.Cli
 		pageToken = res.NextPageToken
 	}
 
-	s.markCrawlingComplete(userID)
 	retrievalToken := strconv.FormatUint(latestHistoryID, 10)
-	return ListofFiles{Files: files}, retrievalToken, nil
+	return retrievalToken, nil
 }
 
-func (s *crawlingServer) GetGoogleGmailList(ctx context.Context, client *http.Client, userID string) (ListofFiles, string, error) {
+func (s *crawlingServer) ProcessGmailMessages(ctx context.Context, client *http.Client, userID string) (string, error) {
 	srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return ListofFiles{}, "", fmt.Errorf("failed to create Gmail service: %w", err)
+		return "", fmt.Errorf("failed to create Gmail service: %w", err)
+	}
+	workers, err := strconv.Atoi(os.Getenv("CRAWLING_GMAIL_MAX_WORKERS"))
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve the gmail max workers value from the env variables: %w", err)
 	}
 
 	const pageSize = 1000
-	const workers = 10
 
 	var files []File
 	var mu sync.Mutex
@@ -150,7 +154,7 @@ func (s *crawlingServer) GetGoogleGmailList(ctx context.Context, client *http.Cl
 					continue
 				}
 
-				if len(file.File) > 0 && s.isFileProcessed(userID, file.File[0].Metadata.ResourceID) {
+				if len(file.File) > 0 && s.isFileProcessed(userID, file.File[0].Metadata.ResourceID, "GOOGLE") {
 					resultChan <- CrawlResult{Files: []File{file}}
 					continue
 				}
@@ -226,12 +230,11 @@ func (s *crawlingServer) GetGoogleGmailList(ctx context.Context, client *http.Cl
 	}
 
 	if len(errs) > 0 {
-		return ListofFiles{}, "", fmt.Errorf("some messages failed to process: %v", errs)
+		return "", fmt.Errorf("some messages failed to process: %v", errs)
 	}
 
-	s.markCrawlingComplete(userID)
 	retrievalToken := strconv.FormatUint(latestHistoryID, 10)
-	return ListofFiles{Files: files}, retrievalToken, nil
+	return retrievalToken, nil
 }
 
 // processMessage processes a single email message

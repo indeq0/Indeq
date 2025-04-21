@@ -156,6 +156,44 @@ func main() {
 				},
 			},
 		},
+		{
+			Topic:             "notion-crawling-signals",
+			NumPartitions:     5,
+			ReplicationFactor: 1,
+			ConfigEntries: []kafka.ConfigEntry{
+				{
+					ConfigName:  "retention.ms",
+					ConfigValue: "86400000",
+				},
+				{
+					ConfigName:  "cleanup.policy",
+					ConfigValue: "delete",
+				},
+				{
+					ConfigName:  "compression.type",
+					ConfigValue: "lz4",
+				},
+			},
+		},
+		{
+			Topic:             "microsoft-crawling-signals",
+			NumPartitions:     5,
+			ReplicationFactor: 1,
+			ConfigEntries: []kafka.ConfigEntry{
+				{
+					ConfigName:  "retention.ms",
+					ConfigValue: "86400000",
+				},
+				{
+					ConfigName:  "cleanup.policy",
+					ConfigValue: "delete",
+				},
+				{
+					ConfigName:  "compression.type",
+					ConfigValue: "lz4",
+				},
+			},
+		},
 	}
 	err = createTopics(brokerAddress, topics)
 	if err != nil {

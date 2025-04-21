@@ -89,6 +89,8 @@ services:
     depends_on:
       desktop:
         condition: service_started
+      crawling:
+        condition: service_started
       vector:
         condition: service_started
     networks:
@@ -161,6 +163,8 @@ services:
     env_file:
       - ./common/config/.env
     depends_on:
+      init:
+        condition: service_completed_successfully
       appDB:
         condition: service_healthy
     networks:

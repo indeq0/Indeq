@@ -13,6 +13,13 @@ service AuthenticationService {
     rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
     rpc CreateOrUpdateGoogleUser(CreateOrUpdateGoogleUserRequest) returns (CreateOrUpdateGoogleUserResponse);
     rpc SSOLogin(SSOConnectRequest) returns (SSOConnectResponse);
+    rpc VerifyOTP(VerifyOTPRequest) returns (VerifyOTPResponse);
+    rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
+    rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
+    rpc ResendOTP(ResendOTPRequest) returns (ResendOTPResponse);
+    rpc SetAlias(SetAliasRequest) returns (SetAliasResponse);
+    rpc GetAlias(GetAliasRequest) returns (GetAliasResponse);
+    rpc DeleteAccount(DeleteUserRequest) returns (DeleteUserResponse);
 }
 
 message LoginRequest {
@@ -23,7 +30,8 @@ message LoginRequest {
 message LoginResponse {
     string token = 1;
     string user_id = 2;
-    string error = 3;
+    string name = 3;
+    string alias = 4;
 }
 
 message RegisterRequest {
@@ -35,6 +43,7 @@ message RegisterRequest {
 message RegisterResponse {
     bool success = 1;
     string error = 2;
+    string token = 3;
 }
 
 message VerifyRequest {
@@ -66,4 +75,68 @@ message CreateOrUpdateGoogleUserResponse {
     string user_id = 1;
     string token = 2;    // JWT token for authentication
     bool user_created = 3;  // Indicates whether a new user was created
+}message VerifyOTPRequest {
+    string code = 1;
+    string type = 2;
+    string token = 3;
+}
+
+message VerifyOTPResponse {
+    bool success = 1;
+    string error = 2;
+    string token = 3;
+    string user_id = 4;
+}
+
+message ResendOTPRequest {
+    string type = 1;
+    string token = 2;
+}
+
+message ResendOTPResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message ForgotPasswordRequest {
+    string email = 1;
+}
+
+message ForgotPasswordResponse {
+    bool success = 1;
+    string error = 2;
+    string token = 3;
+}
+
+message ResetPasswordRequest {
+    string password = 1;
+    string token = 2;
+}
+
+message ResetPasswordResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message SetAliasRequest {
+    string user_id = 1;
+    string alias = 2;
+}
+
+message SetAliasResponse {
+}
+
+message GetAliasRequest {
+    string user_id = 1;
+}
+
+message GetAliasResponse {
+    string alias = 1;
+}
+
+message DeleteUserRequest {
+    string user_id = 1;
+}
+
+message DeleteUserResponse {
 }

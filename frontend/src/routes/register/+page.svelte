@@ -5,20 +5,17 @@
   import { Button } from '$lib/components/ui/button/index.js';
   import { toast } from 'svelte-sonner';
   import { goto } from '$app/navigation';
-
   import { enhance } from '$app/forms';
+  
+  export let form;
 
-  // Check for success or error in the server response
   $: if (form?.success) {
-    toast.success('Welcome aboard! 🎉');
-    goto('/chat');
+    goto('/enter-code?type=register');
   }
 
   $: if (form?.error) {
     toast.error(form.error);
   }
-
-  export let form;
 </script>
 
 <svelte:head>
@@ -61,7 +58,7 @@
 
           <div class="grid gap-2">
             <Label for="password">Password</Label>
-            <Input id="password" name="password" type="password" />
+            <Input id="password" name="password" type="password" placeholder="********" />
           </div>
           {#if form?.error}
             <div class="text-destructive text-sm">{form.error}</div>

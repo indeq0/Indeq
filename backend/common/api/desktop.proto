@@ -5,12 +5,14 @@ option go_package = "github.com/cc-0000/indeq/common/api";
 package api;
 
 import "api/kafka.proto";
+import "api/authentication.proto";
 
 service DesktopService {
     rpc GetChunksFromUser(GetChunksFromUserRequest) returns (GetChunksFromUserResponse);
     rpc SetupUserStats(SetupUserStatsRequest) returns (SetupUserStatsResponse);
     rpc GetCrawlStats(GetCrawlStatsRequest) returns (GetCrawlStatsResponse);
     rpc UpdateUserOnlineStatus(UpdateUserOnlineStatusRequest) returns (UpdateUserOnlineStatusResponse);
+    rpc DeleteUserData(DeleteUserRequest) returns (DeleteUserResponse);
 }
 
 message GetChunksFromUserRequest {
@@ -20,7 +22,7 @@ message GetChunksFromUserRequest {
 }
 
 message GetChunksFromUserResponse {
-    int64 numChunks = 1;
+    int32 numChunks = 1;
     repeated TextChunkMessage chunks = 2;
 }
 
@@ -42,12 +44,12 @@ message FileDoneMessage {
 }
 
 message DesktopChunkRequest {
-    int64 request_id = 1;
+    int32 request_id = 1;
     repeated Metadata requestedChunks = 2;
 }
   
 message DesktopChunkResponse {
-    int64 request_id = 1;
+    int32 request_id = 1;
     repeated TextChunkMessage textChunks = 2;
 }
 

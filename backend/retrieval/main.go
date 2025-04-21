@@ -21,14 +21,15 @@ import (
 
 type retrievalServer struct {
 	pb.UnimplementedRetrievalServiceServer
-	desktopConn     *grpc.ClientConn
-	desktopClient   pb.DesktopServiceClient
-	vectorConn      *grpc.ClientConn
-	vectorClient    pb.VectorServiceClient
-	embeddingConn   *grpc.ClientConn
-	embeddingClient pb.EmbeddingServiceClient
-	crawlingConn    *grpc.ClientConn
-	crawlingClient  pb.CrawlingServiceClient
+	desktopConn         *grpc.ClientConn
+	desktopClient       pb.DesktopServiceClient
+	vectorConn          *grpc.ClientConn
+	vectorClient        pb.VectorServiceClient
+	embeddingConn       *grpc.ClientConn
+	embeddingClient     pb.EmbeddingServiceClient
+	crawlingConn        *grpc.ClientConn
+	crawlingClient      pb.CrawlingServiceClient
+	rankingMinThreshold float32
 }
 
 // rpc(context, retrieve top k chunks request)
@@ -53,6 +54,8 @@ func (s *retrievalServer) RetrieveTopKChunks(ctx context.Context, req *pb.Retrie
 
 	var topKDesktopResults []*pb.Metadata
 	var topKGoogleResults []*pb.Metadata
+	var topKNotionResults []*pb.Metadata
+	var topKMicrosoftResults []*pb.Metadata
 
 	// Separate chunks by platform
 	for _, metadata := range topKMetadatas.TopKMetadatas {
@@ -60,19 +63,23 @@ func (s *retrievalServer) RetrieveTopKChunks(ctx context.Context, req *pb.Retrie
 			topKDesktopResults = append(topKDesktopResults, metadata)
 		} else if metadata.Platform == pb.Platform_PLATFORM_GOOGLE {
 			topKGoogleResults = append(topKGoogleResults, metadata)
+		} else if metadata.Platform == pb.Platform_PLATFORM_NOTION {
+			topKNotionResults = append(topKNotionResults, metadata)
+		} else if metadata.Platform == pb.Platform_PLATFORM_MICROSOFT {
+			topKMicrosoftResults = append(topKMicrosoftResults, metadata)
 		}
 	}
 
 	// Get Desktop chunks and Google chunks concurrently
 	var desktopChunkResponse *pb.GetChunksFromUserResponse
 	var googleChunkResponse *pb.GetChunksFromGoogleResponse
-
+	var notionChunkResponse *pb.GetChunksFromNotionResponse
+	var microsoftChunkResponse *pb.GetChunksFromMicrosoftResponse
 	// Create a WaitGroup to synchronize the goroutines
 	var wg sync.WaitGroup
 
-	// Start both operations in separate goroutines
-	wg.Add(2)
-
+	// Start all 4 operations in separate goroutines
+	wg.Add(4)
 	// Desktop chunks goroutine
 	go func() {
 		defer wg.Done()
@@ -120,6 +127,40 @@ func (s *retrievalServer) RetrieveTopKChunks(ctx context.Context, req *pb.Retrie
 		}
 	}()
 
+	go func() {
+		defer wg.Done()
+		if len(topKNotionResults) > 0 {
+			var localErr error
+			notionChunkResponse, localErr = s.crawlingClient.GetChunksFromNotion(ctx, &pb.GetChunksFromNotionRequest{
+				UserId:    req.UserId,
+				Metadatas: topKNotionResults,
+				Ttl:       req.Ttl,
+			})
+			if localErr != nil {
+				notionChunkResponse = &pb.GetChunksFromNotionResponse{Chunks: []*pb.TextChunkMessage{}}
+			}
+		} else {
+			notionChunkResponse = &pb.GetChunksFromNotionResponse{Chunks: []*pb.TextChunkMessage{}}
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if len(topKMicrosoftResults) > 0 {
+			var localErr error
+			microsoftChunkResponse, localErr = s.crawlingClient.GetChunksFromMicrosoft(ctx, &pb.GetChunksFromMicrosoftRequest{
+				UserId:    req.UserId,
+				Metadatas: topKMicrosoftResults,
+				Ttl:       req.Ttl,
+			})
+			if localErr != nil {
+				microsoftChunkResponse = &pb.GetChunksFromMicrosoftResponse{Chunks: []*pb.TextChunkMessage{}}
+			}
+		} else {
+			microsoftChunkResponse = &pb.GetChunksFromMicrosoftResponse{Chunks: []*pb.TextChunkMessage{}}
+		}
+	}()
+
 	// Wait for both operations to complete
 	wg.Wait()
 
@@ -129,6 +170,12 @@ func (s *retrievalServer) RetrieveTopKChunks(ctx context.Context, req *pb.Retrie
 	}
 	if googleChunkResponse.Chunks != nil {
 		topKChunks = append(topKChunks, googleChunkResponse.Chunks...)
+	}
+	if notionChunkResponse.Chunks != nil {
+		topKChunks = append(topKChunks, notionChunkResponse.Chunks...)
+	}
+	if microsoftChunkResponse.Chunks != nil {
+		topKChunks = append(topKChunks, microsoftChunkResponse.Chunks...)
 	}
 
 	// rerank the results by first getting the scores
@@ -170,9 +217,12 @@ func (s *retrievalServer) RetrieveTopKChunks(ctx context.Context, req *pb.Retrie
 		return passageScores[i].score > passageScores[j].score
 	})
 
-	// collect only the first numberOfSources chunks
+	// collect only the first numberOfSources chunks and passages that higher than a certain threshold
 	var topNumberOfSourcesChunks []*pb.TextChunkMessage
 	for i := range min(numberOfSources, int32(len(passageScores))) {
+		if passageScores[i].score < s.rankingMinThreshold {
+			break
+		}
 		topNumberOfSourcesChunks = append(topNumberOfSourcesChunks, passageScores[i].chunk)
 	}
 
@@ -239,6 +289,12 @@ func (s *retrievalServer) connectToEmbeddingService(tlsConfig *tls.Config) {
 	if err != nil {
 		log.Fatalf("Failed to establish connection with embedding-service: %v", err)
 	}
+
+	rankingMinThreshold, err := strconv.ParseFloat(os.Getenv("RANKING_MIN_THRESHOLD"), 32)
+	if err != nil {
+		log.Fatalf("Failed to parse RANKING_MIN_THRESHOLD: %v", err)
+	}
+	s.rankingMinThreshold = float32(rankingMinThreshold)
 
 	s.embeddingConn = embeddingConn
 	s.embeddingClient = pb.NewEmbeddingServiceClient(embeddingConn)

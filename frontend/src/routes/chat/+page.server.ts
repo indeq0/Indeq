@@ -4,7 +4,7 @@ import { GO_BACKEND_URL } from '$env/static/private';
 import type { DesktopIntegration } from '$lib/types/desktopIntegration';
 import { LogInIcon } from 'svelte-feather-icons';
 
-export const load: PageServerLoad = async ({ cookies, fetch }) => {
+export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
   const session = cookies.get('jwt');
   const userCreated = cookies.get('user_created');
   const redirectedFrom = cookies.get('redirected_from');
@@ -61,7 +61,7 @@ export const load: PageServerLoad = async ({ cookies, fetch }) => {
     integrationData = await integrations.json();
     desktopIntegrationData = await desktopIntegration.json();
   } catch (err) {
-    throw error(500, ' to fetch integrations');
+    throw error(500, 'Failed to fetch integrations');
   }
 
   const providers = integrationData.providers ?? [];
