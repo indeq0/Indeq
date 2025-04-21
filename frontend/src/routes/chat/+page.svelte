@@ -11,9 +11,7 @@
   let userQuery = '';
   let isLoading = false;
   let conversationId = '';
-  let requestId = '';
   let chatInput: HTMLTextAreaElement;
-  let isNavigating = false;
 
   export let data: { 
     integrations: string[],
