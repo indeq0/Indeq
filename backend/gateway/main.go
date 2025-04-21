@@ -1088,9 +1088,6 @@ func main() {
 	}
 	defer authConn.Close()
 	authServiceClient := pb.NewAuthenticationServiceClient(authConn)
-	if _, err = authServiceClient.Login(context.Background(), &pb.LoginRequest{}); err != nil {
-		log.Fatal(err)
-	}
 
 	// Connect to the integration service
 	integrationConn, err := grpc.NewClient(
