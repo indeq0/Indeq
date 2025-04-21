@@ -42,6 +42,10 @@
     }
   }
 
+  function updateMessages(newMessages: ChatMessage[]) {
+    messages = newMessages;
+  }
+
   onMount(() => {
     if (data.id) {
       currentConversationId = data.id;
@@ -178,15 +182,11 @@
             return;
         case "token":
             // state object to pass to the processing functions
-            const state : ChatState = {
-                messages,
-                isReasoning
-            };
+            const state : ChatState = { messages };
             
             if (isReasoning) {
                 processReasoningMessage(payload.token, botMessage, state);
                 messages = state.messages;
-                isReasoning = state.isReasoning;
             } else {
                 processOutputMessage(payload.token, botMessage, state);
                 messages = state.messages;
@@ -219,7 +219,7 @@
 
 <main class="min-h-[calc(100vh-60px)] flex flex-col items-center justify-center px-6">
   <div class="flex-1 flex flex-col w-full max-w-3xl h-screen">
-    <MessageList {messages} {isReasoning} />
+    <MessageList {messages} {isReasoning} {updateMessages} />
     <ChatInput 
       on:send={handleSendMessage} 
       {isLoading} 
