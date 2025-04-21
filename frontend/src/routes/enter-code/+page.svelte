@@ -91,6 +91,7 @@
               bind:value={otp}
               length={6}
               autoFocus
+              mode="numeric"
             />
           </div>
 
