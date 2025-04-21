@@ -2,6 +2,7 @@
   import { BoxIcon, MailIcon, LoaderIcon } from 'svelte-feather-icons';
   import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
+  import { PUBLIC_GO_BACKEND_URL } from '$env/static/public';
 
   let email = '';
   let submitStatus: 'idle' | 'loading' | 'success' | 'error' = 'idle';
@@ -11,7 +12,7 @@
     submitStatus = 'loading';
 
     try {
-      const response = await fetch('/api/waitlist', {
+      const response = await fetch(`${PUBLIC_GO_BACKEND_URL}/api/waitlist`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

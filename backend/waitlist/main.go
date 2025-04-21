@@ -10,6 +10,7 @@ import (
 	"time"
 
 	pb "github.com/cc-0000/indeq/common/api"
+	"github.com/cc-0000/indeq/common/util"
 	"github.com/cc-0000/indeq/common/config"
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
@@ -31,10 +32,18 @@ func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlis
 		}, nil
 	}
 
+	betaCode, err := util.GenerateOTP()
+	if err != nil {
+		return &pb.AddToWaitlistResponse{
+			Success: false,
+			Message: "Something went wrong. Please try again later.",
+		}, nil
+	}
+
 	result, err := s.db.ExecContext(ctx, `
-		INSERT INTO waitlist (email)
-		VALUES ($1)
-		ON CONFLICT (email) DO NOTHING`, req.Email)
+		INSERT INTO waitlist (email, beta_code)
+		VALUES ($1, $2)
+		ON CONFLICT (email) DO NOTHING`, req.Email, betaCode)
 
 	if err != nil {
 		log.Println("Database insert error:", err)
@@ -99,6 +108,7 @@ func main() {
 		CREATE TABLE IF NOT EXISTS waitlist (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			email VARCHAR(255) UNIQUE NOT NULL,
+			beta_code VARCHAR(6) NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 		);
 	`)

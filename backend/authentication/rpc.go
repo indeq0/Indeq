@@ -18,6 +18,7 @@ import (
 	"time"
 
 	pb "github.com/cc-0000/indeq/common/api"
+	"github.com/cc-0000/indeq/common/util"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
@@ -43,8 +44,8 @@ type Config struct {
 
 const (
 	subjectVerify = "Indeq - Verify Your Account"
-	subjectReset = "Indeq - Reset Your Password"
-	verifyBody = `Welcome to Indeq!
+	subjectReset  = "Indeq - Reset Your Password"
+	verifyBody    = `Welcome to Indeq!
 
 To verify your account, enter the following 6-digit code:
 
@@ -192,7 +193,7 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}
 
 	// Generate a random OTP
-	otp, err := generateOTP()
+	otp, err := util.GenerateOTP()
 	if err != nil {
 		// if the OTP generation fails, return an error
 		return &pb.RegisterResponse{
@@ -251,7 +252,6 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}, nil
 }
 
-
 // rpc(context, resend otp request)
 //   - takes in a token and a type and resends the otp
 //   - returns a success boolean and a user id on success
@@ -289,7 +289,7 @@ func (s *authServer) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (*
 			Error:   "Something went wrong. Please try again later.",
 		}, nil
 	}
-	newOTP, err := generateOTP()
+	newOTP, err := util.GenerateOTP()
 	if err != nil {
 		// if the OTP generation fails, return an error
 		return &pb.ResendOTPResponse{
@@ -590,7 +590,7 @@ func (s *authServer) ForgotPassword(ctx context.Context, req *pb.ForgotPasswordR
 	req.Email = strings.ToLower(req.Email)
 
 	// generate a random OTP
-	otp, err := generateOTP()
+	otp, err := util.GenerateOTP()
 	if err != nil {
 		// if the OTP generation fails, return an error
 		return &pb.ForgotPasswordResponse{
@@ -952,8 +952,8 @@ func (s *authServer) GetAlias(ctx context.Context, req *pb.GetAliasRequest) (*pb
 }
 
 // rpc(context, delete account request)
-//	- takes a user id and deletes the user's account from the database
-//	- returns an empty response on success, or error on failure
+//   - takes a user id and deletes the user's account from the database
+//   - returns an empty response on success, or error on failure
 func (s *authServer) DeleteAccount(ctx context.Context, req *pb.DeleteUserRequest) (*pb.DeleteUserResponse, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -970,7 +970,7 @@ func (s *authServer) DeleteAccount(ctx context.Context, req *pb.DeleteUserReques
 	}
 	for _, conversation := range conversations.ConversationHeaders {
 		_, err = s.queryService.DeleteConversation(ctx, &pb.QueryDeleteConversationRequest{
-			UserId:       	req.UserId,
+			UserId:         req.UserId,
 			ConversationId: conversation.ConversationId,
 		})
 		if err != nil {
@@ -1009,7 +1009,6 @@ func (s *authServer) DeleteAccount(ctx context.Context, req *pb.DeleteUserReques
 	if err != nil {
 		return &pb.DeleteUserResponse{}, err
 	}
-
 
 	if err := tx.Commit(); err != nil {
 		return &pb.DeleteUserResponse{}, err
