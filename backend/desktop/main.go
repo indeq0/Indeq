@@ -145,6 +145,38 @@ func (s *desktopServer) UpdateUserOnlineStatus(ctx context.Context, req *pb.Upda
 	return &pb.UpdateUserOnlineStatusResponse{}, nil
 }
 
+// rpc(context, delete user data request)
+//   - deletes all data associated with a user in desktop datastores and also in the vector database
+//   - assumes: the user exists in the database
+func (s *desktopServer) DeleteUserData(ctx context.Context, req *pb.DeleteUserRequest) (*pb.DeleteUserResponse, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+	defer tx.Rollback()
+
+	err = s.deleteUserStats(ctx, tx, req.UserId)
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+
+	_, err = s.vectorService.DeleteFiles(ctx, &pb.VectorFileDeleteRequest{
+		UserId:    req.UserId,
+		Platform:  pb.Platform_PLATFORM_LOCAL,
+		Exclusive: true,
+		Files:     []string{},
+	})
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+
+	return &pb.DeleteUserResponse{}, nil
+}
+
 // func(context, how often we want to check, how long can a crawl be running for before cancelled)
 //   - checks every checkInterval for users for have been crawling for longer than allowedIdleTime and 'kills' those crawls
 //   - assumes: you will cancel the context when you want to stop this process
