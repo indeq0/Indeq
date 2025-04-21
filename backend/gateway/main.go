@@ -998,6 +998,30 @@ func handleGetAliasGenerator(clients *ServiceClients) http.HandlerFunc {
 	}
 }
 
+func handleDeleteAccountGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received delete account request")
+
+		auth_header := r.Header.Get("Authorization")
+		auth_token := strings.TrimPrefix(auth_header, "Bearer ")
+		verifyRes, _ := clients.authClient.Verify(r.Context(), &pb.VerifyRequest{
+			Token: auth_token,
+		})
+
+		// try to make a delete account request
+		_, err := clients.authClient.DeleteAccount(r.Context(), &pb.DeleteUserRequest{
+			UserId: verifyRes.UserId,
+		})
+
+		if err != nil {
+			http.Error(w, "Failed to delete account", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func handleManualCrawlGenerator(clients *ServiceClients) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Received manual crawl request")
@@ -1166,6 +1190,7 @@ func main() {
 	mux.HandleFunc("POST /api/csr", handleSignCSRGenerator(serviceClients))
 	mux.HandleFunc("POST /api/set_alias", authMiddleware(handleSetAliasGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("GET /api/get_alias", authMiddleware(handleGetAliasGenerator(serviceClients), serviceClients))
+	mux.HandleFunc("POST /api/delete_account", authMiddleware(handleDeleteAccountGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/connect", authMiddleware(handleConnectIntegrationGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/disconnect", authMiddleware(handleDisconnectIntegrationGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("GET /api/integrations", authMiddleware(handleGetIntegrationsGenerator(serviceClients), serviceClients))

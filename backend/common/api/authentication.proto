@@ -15,6 +15,7 @@ service AuthenticationService {
     rpc ResendOTP(ResendOTPRequest) returns (ResendOTPResponse);
     rpc SetAlias(SetAliasRequest) returns (SetAliasResponse);
     rpc GetAlias(GetAliasRequest) returns (GetAliasResponse);
+    rpc DeleteAccount(DeleteUserRequest) returns (DeleteUserResponse);
 }
 
 message LoginRequest {
