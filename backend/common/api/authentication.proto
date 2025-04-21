@@ -13,6 +13,9 @@ service AuthenticationService {
     rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
     rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
     rpc ResendOTP(ResendOTPRequest) returns (ResendOTPResponse);
+    rpc SetAlias(SetAliasRequest) returns (SetAliasResponse);
+    rpc GetAlias(GetAliasRequest) returns (GetAliasResponse);
+    rpc DeleteAccount(DeleteUserRequest) returns (DeleteUserResponse);
 }
 
 message LoginRequest {
@@ -23,7 +26,8 @@ message LoginRequest {
 message LoginResponse {
     string token = 1;
     string user_id = 2;
-    string error = 3;
+    string name = 3;
+    string alias = 4;
 }
 
 message RegisterRequest {
@@ -98,4 +102,27 @@ message ResetPasswordRequest {
 message ResetPasswordResponse {
     bool success = 1;
     string error = 2;
+}
+
+message SetAliasRequest {
+    string user_id = 1;
+    string alias = 2;
+}
+
+message SetAliasResponse {
+}
+
+message GetAliasRequest {
+    string user_id = 1;
+}
+
+message GetAliasResponse {
+    string alias = 1;
+}
+
+message DeleteUserRequest {
+    string user_id = 1;
+}
+
+message DeleteUserResponse {
 }

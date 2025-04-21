@@ -711,7 +711,8 @@ func handleLoginGenerator(clients *ServiceClients) http.HandlerFunc {
 		httpResponse := &pb.HttpLoginResponse{
 			Token:  res.Token,
 			UserId: res.UserId,
-			Error:  res.Error,
+			Name:   res.Name,
+			Alias:  res.Alias,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(httpResponse)
@@ -939,6 +940,88 @@ func handleSignCSRGenerator(clients *ServiceClients) http.HandlerFunc {
 	}
 }
 
+func handleSetAliasGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received set alias request")
+		var setAliasRequest pb.HttpSetAliasRequest
+		if err := json.NewDecoder(r.Body).Decode(&setAliasRequest); err != nil {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		auth_header := r.Header.Get("Authorization")
+		auth_token := strings.TrimPrefix(auth_header, "Bearer ")
+		verifyRes, _ := clients.authClient.Verify(r.Context(), &pb.VerifyRequest{
+			Token: auth_token,
+		})
+
+		// try to make a set alias request
+		_, err := clients.authClient.SetAlias(r.Context(), &pb.SetAliasRequest{
+			UserId: verifyRes.UserId,
+			Alias: setAliasRequest.Alias,
+		})
+
+		if err != nil {
+			http.Error(w, "Failed to set alias", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func handleGetAliasGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received get alias request")
+
+		auth_header := r.Header.Get("Authorization")
+		auth_token := strings.TrimPrefix(auth_header, "Bearer ")
+		verifyRes, _ := clients.authClient.Verify(r.Context(), &pb.VerifyRequest{
+			Token: auth_token,
+		})
+
+		// try to make a get alias request
+		aliasRes, err := clients.authClient.GetAlias(r.Context(), &pb.GetAliasRequest{
+			UserId: verifyRes.UserId,
+		})
+
+		if err != nil {
+			http.Error(w, "Failed to get alias", http.StatusInternalServerError)
+			return
+		}
+
+		httpResponse := &pb.HttpGetAliasResponse{
+			Alias: aliasRes.Alias,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(httpResponse)
+	}
+}
+
+func handleDeleteAccountGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received delete account request")
+
+		auth_header := r.Header.Get("Authorization")
+		auth_token := strings.TrimPrefix(auth_header, "Bearer ")
+		verifyRes, _ := clients.authClient.Verify(r.Context(), &pb.VerifyRequest{
+			Token: auth_token,
+		})
+
+		// try to make a delete account request
+		_, err := clients.authClient.DeleteAccount(r.Context(), &pb.DeleteUserRequest{
+			UserId: verifyRes.UserId,
+		})
+
+		if err != nil {
+			http.Error(w, "Failed to delete account", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func handleManualCrawlGenerator(clients *ServiceClients) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Received manual crawl request")
@@ -1029,9 +1112,6 @@ func main() {
 	}
 	defer authConn.Close()
 	authServiceClient := pb.NewAuthenticationServiceClient(authConn)
-	if _, err = authServiceClient.Login(context.Background(), &pb.LoginRequest{}); err != nil {
-		log.Fatal(err)
-	}
 
 	// Connect to the integration service
 	integrationConn, err := grpc.NewClient(
@@ -1108,6 +1188,9 @@ func main() {
 	mux.HandleFunc("POST /api/login", handleLoginGenerator(serviceClients))
 	mux.HandleFunc("POST /api/verify", handleVerifyGenerator(serviceClients))
 	mux.HandleFunc("POST /api/csr", handleSignCSRGenerator(serviceClients))
+	mux.HandleFunc("POST /api/set_alias", authMiddleware(handleSetAliasGenerator(serviceClients), serviceClients))
+	mux.HandleFunc("GET /api/get_alias", authMiddleware(handleGetAliasGenerator(serviceClients), serviceClients))
+	mux.HandleFunc("POST /api/delete_account", authMiddleware(handleDeleteAccountGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/connect", authMiddleware(handleConnectIntegrationGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/disconnect", authMiddleware(handleDisconnectIntegrationGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("GET /api/integrations", authMiddleware(handleGetIntegrationsGenerator(serviceClients), serviceClients))
