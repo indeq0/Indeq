@@ -146,6 +146,16 @@ message HttpAddToWaitlistResponse {
   string message = 2;
 }
 
+message HttpValidateBetaCodeRequest {
+  string email = 1;
+  string beta_code = 2;
+}
+
+message HttpValidateBetaCodeResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 message HttpGetDesktopStatsRequest {
 }
 

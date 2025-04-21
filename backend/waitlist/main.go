@@ -75,6 +75,40 @@ func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlis
 	}, nil
 }
 
+func (s *WaitlistServer) ValidateBetaCode(ctx context.Context, req *pb.ValidateBetaCodeRequest) (*pb.ValidateBetaCodeResponse, error) {
+	log.Println("Validating beta code:", req.BetaCode)
+
+	if req.BetaCode == "" || req.Email == "" {
+		return &pb.ValidateBetaCodeResponse{
+			Success: false,
+			Message: "Invalid request",
+		}, nil
+	}
+
+	var betaCode string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT beta_code FROM waitlist WHERE email = $1
+	`, req.Email).Scan(&betaCode)
+	if err != nil {
+		return &pb.ValidateBetaCodeResponse{
+			Success: false,
+			Message: "Could not validate beta code. Please try again later.",
+		}, nil
+	}
+
+	if betaCode != req.BetaCode {
+		return &pb.ValidateBetaCodeResponse{
+			Success: false,
+			Message: "Invalid beta code",
+		}, nil
+	}
+
+	return &pb.ValidateBetaCodeResponse{
+		Success: true,
+		Message: "Beta code validated successfully",
+	}, nil
+}
+
 func main() {
 	log.Println("Starting the waitlist server...")
 

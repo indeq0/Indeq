@@ -608,6 +608,39 @@ func handleAddToWaitlist(clients *ServiceClients) http.HandlerFunc {
 	}
 }
 
+func handleValidateBetaCode(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var validateBetaCodeRequest pb.HttpValidateBetaCodeRequest
+		log.Println("Received validate beta code request")
+		if err := json.NewDecoder(r.Body).Decode(&validateBetaCodeRequest); err != nil {
+			log.Printf("Error: %v", err)
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		if validateBetaCodeRequest.Email == "" || validateBetaCodeRequest.BetaCode == "" {
+			http.Error(w, "Missing email or beta code", http.StatusBadRequest)
+			return
+		}
+
+		res, err := clients.waitlistClient.ValidateBetaCode(r.Context(), &pb.ValidateBetaCodeRequest{
+			Email: validateBetaCodeRequest.Email,
+			BetaCode: validateBetaCodeRequest.BetaCode,
+		})
+		if err != nil {
+			http.Error(w, "Failed to validate beta code", http.StatusInternalServerError)
+			return
+		}
+
+		httpResponse := &pb.HttpValidateBetaCodeResponse{
+			Success: res.Success,
+			Message: res.Message,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(httpResponse)
+	}
+}
+
 func handleGetDesktopStatsGenerator(clients *ServiceClients) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Set up context
@@ -1196,6 +1229,7 @@ func main() {
 	mux.HandleFunc("GET /api/integrations", authMiddleware(handleGetIntegrationsGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/oauth", handleOAuthURLGenerator(serviceClients))
 	mux.HandleFunc("POST /api/waitlist", handleAddToWaitlist(serviceClients))
+	mux.HandleFunc("POST /api/validate-beta-code", handleValidateBetaCode(serviceClients))
 	mux.HandleFunc("GET /api/desktop_stats", authMiddleware(handleGetDesktopStatsGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/manualcrawl", authMiddleware(handleManualCrawlGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/verify-otp", handleVerifyOTPGenerator(serviceClients))
