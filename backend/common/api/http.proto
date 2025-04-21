@@ -68,7 +68,9 @@ message HttpLoginRequest {
 message HttpLoginResponse {
   string token = 1;
   string user_id = 2;
-  string error = 3;
+  string name = 3;
+  string alias = 4;
+  string error = 5;
 }
 
 message HttpVerifyResponse {

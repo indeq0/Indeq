@@ -711,7 +711,8 @@ func handleLoginGenerator(clients *ServiceClients) http.HandlerFunc {
 		httpResponse := &pb.HttpLoginResponse{
 			Token:  res.Token,
 			UserId: res.UserId,
-			Error:  res.Error,
+			Name:   res.Name,
+			Alias:  res.Alias,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(httpResponse)

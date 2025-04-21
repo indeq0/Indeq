@@ -78,19 +78,19 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	if exceeded, err := s.checkRateLimit(ctx, req.Email); err != nil {
 		return nil, err
 	} else if exceeded {
-		return &pb.LoginResponse{Error: "too many attempts, please try again later"}, nil
+		return &pb.LoginResponse{}, fmt.Errorf("too many attempts, please try again later")
 	}
 
 	// get the id and encoded password hash matching user email
-	var id string
-	var encodedHash string
-	err := s.db.QueryRowContext(ctx,
-		"SELECT id, password_hash FROM users WHERE email = $1",
-		strings.ToLower(req.Email),
-	).Scan(&id, &encodedHash)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
 
+	id, encodedHash, name, alias, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
 	if err == sql.ErrNoRows {
-		// Even though thhe user doesn't exist we want to fake a comparison
+		// Even though the user doesn't exist we want to fake a comparison
 		dummyEncodedHash := fmt.Sprintf(
 			"$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s",
 			argon2.Version,
@@ -101,20 +101,24 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 			"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
 		)
 		comparePasswordAndEncodedHash(req.Password, dummyEncodedHash)
-		return &pb.LoginResponse{Error: "Invalid credentials"}, nil
+		return &pb.LoginResponse{}, fmt.Errorf("invalid credentials")
 	}
 	if err != nil {
 		return nil, err
 	}
 
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
 	match, err := comparePasswordAndEncodedHash(req.Password, encodedHash)
 	if err != nil {
-		return &pb.LoginResponse{Error: "Invalid credentials"}, nil
+		return &pb.LoginResponse{}, fmt.Errorf("invalid credentials")
 	}
 	if !match {
 		// Increment failed attempts counter
 		s.incrementFailedAttempts(ctx, req.Email)
-		return &pb.LoginResponse{Error: "Invalid credentials"}, nil
+		return &pb.LoginResponse{}, fmt.Errorf("invalid credentials")
 	}
 	s.resetFailedAttempts(ctx, req.Email)
 
@@ -131,13 +135,12 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 		return nil, err
 	}
 
-	return &pb.LoginResponse{Token: tokenString, UserId: id}, nil
+	return &pb.LoginResponse{Token: tokenString, UserId: id, Name: name, Alias: alias}, nil
 }
 
 // rpc(context, register request)
-//   - takes in a email, name and password and registers the user in our database
+//   - takes in a email, name and password and creates a temporary redis entry with that information awaiting OTP approval
 //   - email, password must pass validation
-//   - creates corresponding Vector, and Desktop datastores for the user
 func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 	// Make sure email is good
 	if err := s.validateEmail(req.Email); err != nil {
@@ -388,10 +391,10 @@ func (s *authServer) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (*
 
 // rpc(context, verify otp request)
 //   - takes in a token and a code and verifies the code
-//   - returns a success boolean and a user id on success
-//   - returns an error on failure
 //   - if the type is register, it will store the user in the database
 //   - if the type is forgot, it will update the user's password
+//   - creates corresponding Vector, and Desktop datastores for the user
+//   - returns: user id and true, or error on failure
 func (s *authServer) VerifyOTP(ctx context.Context, req *pb.VerifyOTPRequest) (*pb.VerifyOTPResponse, error) {
 	if req.Code == "" {
 		// if the code is empty, return an error
@@ -461,15 +464,7 @@ func (s *authServer) VerifyOTP(ctx context.Context, req *pb.VerifyOTPRequest) (*
 		}
 		defer tx.Rollback()
 
-		var userId string
-		err = tx.QueryRowContext(
-			ctx,
-			"INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id",
-			strings.ToLower(payload.Email), // Normalize email
-			payload.HashedPassword,
-			payload.Name,
-		).Scan(&userId)
-
+		userId, err := createUser(ctx, tx, strings.ToLower(payload.Email), payload.HashedPassword, payload.Name)
 		if err != nil {
 			// if the query fails, return an error
 			return &pb.VerifyOTPResponse{
@@ -905,4 +900,53 @@ func (s *authServer) SignCSR(ctx context.Context, req *pb.SignCSRRequest) (*pb.S
 	return &pb.SignCSRResponse{
 		CertificateBase64: certBase64,
 	}, nil
+}
+
+// rpc(context, set alias request)
+//   - takes a user id and an alias, and updates the user's alias in the database
+//   - returns an empty response on success, or error on failure
+func (s *authServer) SetAlias(ctx context.Context, req *pb.SetAliasRequest) (*pb.SetAliasResponse, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return &pb.SetAliasResponse{}, err
+	}
+	defer tx.Rollback()
+
+	email, passwordHash, name, _, err := getUserById(ctx, tx, req.UserId)
+	if err != nil {
+		return &pb.SetAliasResponse{}, err
+	}
+
+	_, err = updateUser(ctx, tx, req.UserId, email, passwordHash, name, req.Alias)
+	if err != nil {
+		return &pb.SetAliasResponse{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return &pb.SetAliasResponse{}, err
+	}
+
+	return &pb.SetAliasResponse{}, nil
+}
+
+// rpc(context, get alias request)
+//   - takes a user id and retrieves the user's alias from the database
+//   - returns the alias string on success, or error on failure
+func (s *authServer) GetAlias(ctx context.Context, req *pb.GetAliasRequest) (*pb.GetAliasResponse, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return &pb.GetAliasResponse{}, err
+	}
+	defer tx.Rollback()
+
+	_, _, _, alias, err := getUserById(ctx, tx, req.UserId)
+	if err != nil {
+		return &pb.GetAliasResponse{}, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return &pb.GetAliasResponse{}, err
+	}
+
+	return &pb.GetAliasResponse{Alias: alias}, nil
 }

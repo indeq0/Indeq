@@ -152,6 +152,7 @@ func (s *authServer) connectToDatabase(ctx context.Context, contextDuration time
             email VARCHAR(255) UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             name VARCHAR(255) NOT NULL,
+			alias VARCHAR(255) NOT NULL,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
