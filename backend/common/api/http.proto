@@ -88,6 +88,18 @@ message HttpCSRResponse {
   string error = 2;
 }
 
+message HttpSetAliasRequest {
+  string alias = 1;
+}
+
+message HttpSetAliasResponse {}
+
+message HttpGetAliasRequest {}
+
+message HttpGetAliasResponse {
+  string alias = 1;
+}
+
 message HttpGetIntegrationsRequest {
 }
 
