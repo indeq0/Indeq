@@ -2,11 +2,10 @@
     import { createEventDispatcher, onMount, afterUpdate } from 'svelte';
     import { SendIcon } from "svelte-feather-icons";
     import { desktopIntegration } from '$lib/stores/desktopIntegration';
-    import { isIntegrated } from "$lib/utils/integration";
     import IntegrationStatus from './integration-status.svelte';
     
     export let isLoading = false;
-    export let integrations = [];
+    export let integrations: string[] = [];
     
     let userQuery = '';
     let textareaElement: HTMLTextAreaElement;

@@ -93,8 +93,6 @@
       };
       messages = [...messages, userMessage];
       
-      const chatData = await res.json();
-
       // Add empty bot message that will be updated when streaming
       const botMessage = { 
         text: "", 
@@ -215,7 +213,7 @@
 </script>
 
 <svelte:head>
-  <title>Indeq - {data.title}</title>
+  <title>{data.title} - Indeq</title>
   <meta name="description" content="Chat with Indeq" />
 </svelte:head>
 

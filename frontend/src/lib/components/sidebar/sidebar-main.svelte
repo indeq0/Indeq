@@ -163,7 +163,7 @@
 					class="rounded-xl hover:bg-[#e6e4e3] {$page.url.pathname === '/profile/settings' ? 'bg-[#e6e4e3]' : ''}"
 					builders={[builder]}
 				>
-					<SettingsIcon class="size-5 {$page.url.pathname === '/profile/settings' ? 'stroke-gray-900' : 'stroke-gray-700'}" />
+					<SettingsIcon class="size-5 {$page.url.pathname === '/profile/settings' ? 'stroke-gray-700' : 'stroke-gray-500'}" />
 				</Button>
 			</Tooltip.Trigger>
 			<Tooltip.Content side="right" class="bg-gray-800 text-white" sideOffset={5}>Settings</Tooltip.Content>
