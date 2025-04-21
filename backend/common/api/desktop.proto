@@ -5,12 +5,14 @@ option go_package = "github.com/cc-0000/indeq/common/api";
 package api;
 
 import "api/kafka.proto";
+import "api/authentication.proto";
 
 service DesktopService {
     rpc GetChunksFromUser(GetChunksFromUserRequest) returns (GetChunksFromUserResponse);
     rpc SetupUserStats(SetupUserStatsRequest) returns (SetupUserStatsResponse);
     rpc GetCrawlStats(GetCrawlStatsRequest) returns (GetCrawlStatsResponse);
     rpc UpdateUserOnlineStatus(UpdateUserOnlineStatusRequest) returns (UpdateUserOnlineStatusResponse);
+    rpc DeleteUserData(DeleteUserRequest) returns (DeleteUserResponse);
 }
 
 message GetChunksFromUserRequest {

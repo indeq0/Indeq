@@ -34,6 +34,10 @@ type authServer struct {
 	db                *sql.DB // password database
 	desktopConn       *grpc.ClientConn
 	desktopClient     pb.DesktopServiceClient
+	integrationConn    *grpc.ClientConn
+	integrationService pb.IntegrationServiceClient
+	queryConn         *grpc.ClientConn
+	queryService      pb.QueryServiceClient
 	jwtSecret         []byte // secret for creating jwts
 	argonParams       *params
 	MinPasswordLength int
@@ -189,6 +193,48 @@ func (s *authServer) connectToDesktopService(tlsConfig *tls.Config) {
 	s.desktopClient = pb.NewDesktopServiceClient(desktopConn)
 }
 
+// func(client TLS config)
+//   - connects to the integration service using the provided client tls config and saves the connection and function interface to the server struct
+//   - assumes: the connection will be closed in the parent function at some point
+func (s *authServer) connectToIntegrationService(tlsConfig *tls.Config) {
+	// Connect to the integration service
+	integrationAddy, ok := os.LookupEnv("INTEGRATION_ADDRESS")
+	if !ok {
+		log.Fatal("failed to retrieve integration address for connection")
+	}
+	integrationConn, err := grpc.NewClient(
+		integrationAddy,
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+	)
+	if err != nil {
+		log.Fatalf("Failed to establish connection with integration-service: %v", err)
+	}
+
+	s.integrationConn = integrationConn
+	s.integrationService = pb.NewIntegrationServiceClient(integrationConn)
+}
+
+// func(client TLS config)
+//   - connects to the query service using the provided client tls config and saves the connection and function interface to the server struct
+//   - assumes: the connection will be closed in the parent function at some point
+func (s *authServer) connectToQueryService(tlsConfig *tls.Config) {
+	// Connect to the query service
+	queryAddy, ok := os.LookupEnv("QUERY_ADDRESS")
+	if !ok {
+		log.Fatal("failed to retrieve query address for connection")
+	}
+	queryConn, err := grpc.NewClient(
+		queryAddy,
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
+	)
+	if err != nil {
+		log.Fatalf("Failed to establish connection with query-service: %v", err)
+	}
+
+	s.queryConn = queryConn
+	s.queryService = pb.NewQueryServiceClient(queryConn)
+}
+
 // func()
 //   - sets up the gRPC server, connects it with the global struct, and TLS
 //   - assumes: you will call grpcServer.GracefulStop() in the parent function at some point
@@ -277,6 +323,14 @@ func main() {
 	// Connect to the desktop service
 	server.connectToDesktopService(clientTlsConfig)
 	defer server.desktopConn.Close()
+
+	// Connect to the integration service
+	server.connectToIntegrationService(clientTlsConfig)
+	defer server.integrationConn.Close()
+
+	// Connect to the query service
+	server.connectToQueryService(clientTlsConfig)
+	defer server.queryConn.Close()
 
 	<-sigChan // TODO: implement worker groups
 	log.Print("gracefully shutting down...")

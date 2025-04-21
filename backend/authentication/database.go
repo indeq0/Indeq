@@ -5,6 +5,10 @@ import (
 	"database/sql"
 )
 
+/**************
+** USER CRUD **
+***************/
+
 // func(context, current open transaction, email, password hash, name, alias)
 //   - inserts a user into the users table with the given email, password hash, and name in the given transaction
 //   - returns: the new user's ID or an error
@@ -77,4 +81,20 @@ func updateUser(ctx context.Context, tx *sql.Tx, userId string, email string, pa
 		return "", err
 	}
 	return userId, nil
+}
+
+// func(context, current open transaction, user ID)
+//   - deletes a user's account from the users table with the given user ID in the given transaction
+//   - returns: an error if the deletion fails
+//   - assumes: you will close this transaction in the parent function!
+func deleteUser(ctx context.Context, tx *sql.Tx, userId string) error {
+	_, err := tx.ExecContext(
+		ctx,
+		`DELETE FROM users WHERE id = $1`,
+		userId,
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }

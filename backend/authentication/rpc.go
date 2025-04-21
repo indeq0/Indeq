@@ -950,3 +950,70 @@ func (s *authServer) GetAlias(ctx context.Context, req *pb.GetAliasRequest) (*pb
 
 	return &pb.GetAliasResponse{Alias: alias}, nil
 }
+
+// rpc(context, delete account request)
+//	- takes a user id and deletes the user's account from the database
+//	- returns an empty response on success, or error on failure
+func (s *authServer) DeleteAccount(ctx context.Context, req *pb.DeleteUserRequest) (*pb.DeleteUserResponse, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+	defer tx.Rollback()
+
+	// Delete all conversations
+	conversations, err := s.queryService.GetAllConversations(ctx, &pb.QueryGetAllConversationsRequest{
+		UserId: req.UserId,
+	})
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+	for _, conversation := range conversations.ConversationHeaders {
+		_, err = s.queryService.DeleteConversation(ctx, &pb.QueryDeleteConversationRequest{
+			UserId:       	req.UserId,
+			ConversationId: conversation.ConversationId,
+		})
+		if err != nil {
+			return &pb.DeleteUserResponse{}, err
+		}
+	}
+
+	// Delete all cloud related data
+	res, err := s.integrationService.GetIntegrations(ctx, &pb.GetIntegrationsRequest{
+		UserId: req.UserId,
+	})
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+
+	for _, provider := range res.Providers {
+		_, err = s.integrationService.DisconnectIntegration(ctx, &pb.DisconnectIntegrationRequest{
+			UserId:   req.UserId,
+			Provider: provider,
+		})
+		if err != nil {
+			return &pb.DeleteUserResponse{}, err
+		}
+	}
+
+	// Delete all desktop related data
+	_, err = s.desktopClient.DeleteUserData(ctx, &pb.DeleteUserRequest{
+		UserId: req.UserId,
+	})
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+
+	// Delete the user from our auth stores
+	err = deleteUser(ctx, tx, req.UserId)
+	if err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+
+
+	if err := tx.Commit(); err != nil {
+		return &pb.DeleteUserResponse{}, err
+	}
+
+	return &pb.DeleteUserResponse{}, nil
+}

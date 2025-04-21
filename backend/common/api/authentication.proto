@@ -118,3 +118,10 @@ message GetAliasRequest {
 message GetAliasResponse {
     string alias = 1;
 }
+
+message DeleteUserRequest {
+    string user_id = 1;
+}
+
+message DeleteUserResponse {
+}
