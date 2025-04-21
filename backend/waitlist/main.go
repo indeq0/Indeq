@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/mail"
 	"os"
+	"strings"
 	"time"
 
 	pb "github.com/cc-0000/indeq/common/api"
@@ -24,6 +25,7 @@ type WaitlistServer struct {
 
 func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlistRequest) (*pb.AddToWaitlistResponse, error) {
 	log.Println("Adding to waitlist:", req.Email)
+	req.Email = strings.ToLower(req.Email)
 	_, err := mail.ParseAddress(req.Email)
 	if err != nil {
 		return &pb.AddToWaitlistResponse{
