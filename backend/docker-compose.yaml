@@ -1,43 +1,68 @@
 services:
-  query:
-    image: query-service
-    build:
-      context: .
-      dockerfile: query/Dockerfile
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - indeq-net
-
-  # this docker setup doesn't utilize the GPU
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_models:/root/.ollama
-    environment:
-      - OLLAMA_NUM_PARALLEL=4 # Number of threads to utilize
-    mem_limit: 16g
-    networks:
-      - indeq-net
-
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4.0-management
     container_name: rabbitmq
     env_file:
       - ./common/config/.env
     ports:
       - 5672:5672 # AMQP protocol port
       - 15672:15672 # Management UI port
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - indeq-net
+
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: kafka
+    env_file:
+      - ./common/config/.env
+    networks:
+      - indeq-net
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  init:
+    build:
+      context: .
+      dockerfile: init/Dockerfile
+    restart: "no"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      couchdb:
+        condition: service_healthy
+    networks:
+      - indeq-net
+
+  embedding:
+    image: embedding-service
+    build:
+      context: .
+      dockerfile: embedding/Dockerfile
+    volumes:
+      - embedding_data:/app/model_cache
+    networks:
+      - indeq-net
+
+  mqtt:
+    image: mqtt-service
+    container_name: mqtt-service
+    ports:
+      - "8883:8883"
+    build:
+      context: .
+      dockerfile: mqtt/Dockerfile
     networks:
       - indeq-net
 
@@ -51,6 +76,34 @@ services:
     depends_on:
       appDB:
         condition: service_healthy
+      vector:
+        condition: service_started
+    networks:
+      - indeq-net
+
+  retrieval:
+    image: retrieval-service
+    build:
+      context: .
+      dockerfile: retrieval/Dockerfile
+    depends_on:
+      desktop:
+        condition: service_started
+      crawling:
+        condition: service_started
+      vector:
+        condition: service_started
+    networks:
+      - indeq-net
+
+  vector:
+    image: vector-service
+    build:
+      context: .
+      dockerfile: vector/Dockerfile
+    depends_on:
+      init:
+        condition: service_completed_successfully
     networks:
       - indeq-net
 
@@ -59,12 +112,60 @@ services:
     build:
       context: .
       dockerfile: gateway/Dockerfile
+    env_file:
+      - ./common/config/.env
     ports:
       - "8080:8080"
     depends_on:
       query:
         condition: service_started
       rabbitmq:
+        condition: service_healthy
+      authentication:
+        condition: service_started
+      desktop:
+        condition: service_started
+      init:
+        condition: service_completed_successfully
+    networks:
+      - indeq-net
+
+  desktop:
+    image: desktop-service
+    build:
+      context: .
+      dockerfile: desktop/Dockerfile
+    ports:
+      - "8081:8080"
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      mqtt:
+        condition: service_started
+    networks:
+      - indeq-net
+
+  query:
+    image: query-service
+    build:
+      context: .
+      dockerfile: query/Dockerfile
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - indeq-net
+  crawling:
+    image: crawling-service
+    build:
+      context: .
+      dockerfile: crawling/Dockerfile
+    env_file:
+      - ./common/config/.env
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      appDB:
         condition: service_healthy
     networks:
       - indeq-net
@@ -80,6 +181,36 @@ services:
         condition: service_healthy
     networks:
       - indeq-net
+
+  integration:
+    image: integration-service
+    build:
+      context: .
+      dockerfile: integration/Dockerfile
+    env_file: ./common/config/.env
+    depends_on:
+      appDB:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - indeq-net
+
+  redis:
+    image: redis:alpine
+    env_file:
+      - ./common/config/.env
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$$REDIS_PASSWORD", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - indeq-net
+
   appDB:
     image: postgres:latest
     env_file:
@@ -98,12 +229,30 @@ services:
       - app_data:/var/lib/postgresql/data
     networks:
       - indeq-net
+  
+  couchdb:
+    image: couchdb
+    env_file:
+      - ./common/config/.env
+    restart: always
+    volumes:
+      - couch_data:/opt/couchdb/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail http://localhost:5984 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - indeq-net
 
 volumes:
   app_data:
-  ollama_models:
-  rabbitmq_data:
+  embedding_data:
+  redis_data:
+  couch_data:
 
 networks:
   indeq-net:
     driver: bridge
+    labels:
+      com.docker.network.dns.name: docker.internal

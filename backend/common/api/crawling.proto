@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+option go_package = "github.com/cc-0000/indeq/common/api";
+
+package api;
+
+import "api/kafka.proto";
+
+// CrawlingService definition
+service CrawlingService {
+    rpc StartInitalCrawler (StartInitalCrawlerRequest) returns (StartInitalCrawlerResponse);
+    rpc ManualCrawler (ManualCrawlerRequest) returns (ManualCrawlerResponse);
+    rpc DeleteCrawlerData (DeleteCrawlerDataRequest) returns (DeleteCrawlerDataResponse);
+    rpc GetChunksFromGoogle (GetChunksFromGoogleRequest) returns (GetChunksFromGoogleResponse);
+    rpc GetChunksFromNotion (GetChunksFromNotionRequest) returns (GetChunksFromNotionResponse);
+    rpc GetChunksFromMicrosoft (GetChunksFromMicrosoftRequest) returns (GetChunksFromMicrosoftResponse);
+}
+
+message StartInitalCrawlerRequest {
+    string user_id = 1;
+    string platform = 2;
+    string access_token = 3;
+}
+
+message StartInitalCrawlerResponse {
+    bool success = 1;
+    string message = 2;
+    string error_details = 3;
+}
+
+// Request message for updating crawler
+message ManualCrawlerRequest {
+    string user_id = 1;      // Unique user identifier
+}
+
+// Response message from updating crawler
+message ManualCrawlerResponse {
+    bool success = 1;        // Indicates if the update succeeded
+    string error = 2;        // Error message if success is false
+}
+
+// Request message for deleting crawler data
+message DeleteCrawlerDataRequest {
+  string user_id = 1;
+  string platform = 2;
+}
+
+// Response message for deleting crawler data
+message DeleteCrawlerDataResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message GetChunksFromGoogleRequest {
+    string user_id = 1;
+    repeated Metadata metadatas = 2;
+    uint32 ttl = 3; 
+}
+
+message GetChunksFromGoogleResponse {
+    int64 numChunks = 1;
+    repeated TextChunkMessage chunks = 2;
+}
+
+message GetChunksFromNotionRequest {
+    string user_id = 1;
+    repeated Metadata metadatas = 2;
+    uint32 ttl = 3; 
+}
+
+message GetChunksFromNotionResponse {
+    int64 numChunks = 1;
+    repeated TextChunkMessage chunks = 2;
+}
+
+message GetChunksFromMicrosoftRequest {
+    string user_id = 1;
+    repeated Metadata metadatas = 2;
+    uint32 ttl = 3; 
+}
+
+message GetChunksFromMicrosoftResponse {
+    int64 numChunks = 1;
+    repeated TextChunkMessage chunks = 2;
+}

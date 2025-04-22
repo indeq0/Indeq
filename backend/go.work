@@ -1,9 +1,0 @@
-go 1.23.5
-
-use (
-	./authentication
-	./common
-	./gateway
-	./query
-	./waitlist
-)

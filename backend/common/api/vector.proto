@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option go_package = "github.com/cc-0000/indeq/common/api";
+
+import "api/kafka.proto";
+
+package api;
+
+service VectorService {
+    rpc DeleteFiles(VectorFileDeleteRequest) returns (VectorFileDeleteResponse);
+    rpc GetTopKChunks(GetTopKChunksRequest) returns (GetTopKChunksResponse);
+}
+
+message VectorFileDeleteRequest {
+    string user_id = 1;
+    Platform platform = 2;
+    bool exclusive = 3;
+    repeated string files = 4; // file paths 
+}
+
+message VectorFileDeleteResponse {}
+
+message GetTopKChunksRequest {
+    string user_id = 1;
+    string prompt = 2;
+    int32 k = 3;
+}
+
+message GetTopKChunksResponse {
+    repeated Metadata top_k_metadatas = 1;
+}

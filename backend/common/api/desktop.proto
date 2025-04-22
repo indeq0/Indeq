@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+option go_package = "github.com/cc-0000/indeq/common/api";
+
+package api;
+
+import "api/kafka.proto";
+import "api/authentication.proto";
+
+service DesktopService {
+    rpc GetChunksFromUser(GetChunksFromUserRequest) returns (GetChunksFromUserResponse);
+    rpc SetupUserStats(SetupUserStatsRequest) returns (SetupUserStatsResponse);
+    rpc GetCrawlStats(GetCrawlStatsRequest) returns (GetCrawlStatsResponse);
+    rpc UpdateUserOnlineStatus(UpdateUserOnlineStatusRequest) returns (UpdateUserOnlineStatusResponse);
+    rpc DeleteUserData(DeleteUserRequest) returns (DeleteUserResponse);
+}
+
+message GetChunksFromUserRequest {
+    string user_id = 1;
+    repeated Metadata metadatas = 2;
+    uint32 ttl = 3;    // milliseconds
+}
+
+message GetChunksFromUserResponse {
+    int32 numChunks = 1;
+    repeated TextChunkMessage chunks = 2;
+}
+
+message SetupUserStatsRequest {
+    string user_id = 1;
+}
+
+message SetupUserStatsResponse {
+    bool success = 1;
+}
+
+message NewCrawl {
+    repeated string filePaths = 1;
+    repeated string fileHashes = 2;
+}
+
+message FileDoneMessage {
+    string file_path = 1;
+}
+
+message DesktopChunkRequest {
+    int32 request_id = 1;
+    repeated Metadata requestedChunks = 2;
+}
+  
+message DesktopChunkResponse {
+    int32 request_id = 1;
+    repeated TextChunkMessage textChunks = 2;
+}
+
+message GetCrawlStatsRequest {
+    string user_id = 1;
+}
+
+message GetCrawlStatsResponse {
+    int32 crawled_files = 1;
+    int32 total_files = 2;
+    bool is_crawling = 3;
+    bool is_online = 4;
+}
+
+message UpdateUserOnlineStatusRequest {
+    string user_id = 1;
+    bool is_online = 2;
+}
+
+message UpdateUserOnlineStatusResponse {}

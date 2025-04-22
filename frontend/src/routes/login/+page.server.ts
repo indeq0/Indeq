@@ -3,55 +3,79 @@ import type { Actions } from './$types';
 import { GO_BACKEND_URL } from '$env/static/private';
 
 export const actions = {
-    default: async ({ request, cookies }) => {
-        const data = await request.formData();
-        const email = data.get('email');
-        const password = data.get('password');
+  default: async ({ request, cookies }) => {
+    const data = await request.formData();
+    const email = data.get('email');
+    const password = data.get('password');
 
-        // Basic validation
-        if (!email || !password) {
-            return fail(400, {
-                error: 'Email and password are required',
-                email: email?.toString()
-            });
-        }
-
-        try {
-            const res = await fetch(`${GO_BACKEND_URL}/api/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ "email": email, "password": password }),
-            });
-
-            if (!res.ok) {
-                const msg = await res.text();
-                
-                // Return an error to the page to display
-                return fail(res.status, { error: msg });
-            }
-
-            const response = await res.json();
-
-            // Store JWT token in an HTTP-only cookie
-            cookies.set('jwt', response.token, {
-                httpOnly: true, // Prevent client-side access
-                secure: true,   // Only send over HTTPS
-                path: '/',      // Accessible across the entire app
-                maxAge: 60 * 60 * 24, // 1 day
-                sameSite: 'strict'
-            });
-
-            if (response.error == null || response.error === '') {
-                return { success: true };
-            } else {
-                return fail(400, { error: response.error });
-            }
-
-        } catch (error) {
-            return fail(400, {
-                error: 'Invalid credentials',
-                email: email?.toString()
-            });
-        }
+    // Basic validation
+    if (!email || !password) {
+      return fail(400, {
+        error: 'Email and password are required',
+        email: email?.toString()
+      });
     }
+
+    try {
+      const res = await fetch(`${GO_BACKEND_URL}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: password })
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+
+        // Return an error to the page to display
+        return fail(res.status, { error: msg });
+      }
+
+      const response = await res.json();
+
+      // Store JWT token in an HTTP-only cookie
+      cookies.set('jwt', response.token, {
+        httpOnly: true, // Prevent client-side access
+        secure: true, // Only send over HTTPS
+        path: '/', // Accessible across the entire app
+        maxAge: 60 * 60 * 24, // 1 day
+        sameSite: 'lax'
+      });
+
+      cookies.set('loggingIn', 'true', {
+        httpOnly: true,
+        secure: true,
+        path: '/',
+        maxAge: 5,
+        sameSite: 'lax'
+      });
+
+      cookies.set("user_created", "false", {
+        httpOnly: true,
+        secure: true,
+        path: '/',
+        maxAge: 5,
+        sameSite: 'lax'
+      });
+
+      cookies.set("redirected_from", "login", {
+        httpOnly: true, // Prevent client-side access
+        secure: true, // Only send over HTTPS
+        path: '/', // Accessible across the entire app
+        maxAge: 5, // 5 seconds
+        sameSite: 'lax'
+      });
+
+      if (response.error == null || response.error === '') {
+        // Return user data to the client for the userStore
+        return { success: true};
+      } else {
+        return fail(400, { error: response.error });
+      }
+    } catch (error) {
+      return fail(400, {
+        error: 'Invalid credentials',
+        email: email?.toString()
+      });
+    }
+  }
 } satisfies Actions;

@@ -12,7 +12,7 @@ export const GET: RequestHandler = async () => {
   const pages: SitemapEntry[] = [
     { path: '/', lastmod: '2025-03-06', changefreq: 'monthly', priority: '1.0' },
     { path: '/privacy', lastmod: '2025-03-06', changefreq: 'monthly', priority: '1.0' },
-    { path: '/terms', lastmod: '2025-03-06', changefreq: 'monthly', priority: '1.0' },
+    { path: '/terms', lastmod: '2025-03-06', changefreq: 'monthly', priority: '1.0' }
     // TODO: Add these back in on launch
     // { path: '/chat', lastmod: '2025-03-06', changefreq: 'monthly', priority: '1.0' },
     // { path: '/login', lastmod: '2025-03-06', changefreq: 'monthly', priority: '1.0' },
@@ -37,7 +37,7 @@ export const GET: RequestHandler = async () => {
   return new Response(xml, {
     headers: {
       'Content-Type': 'application/xml',
-      'Cache-Control': 'public, max-age=86400', // Cache for 1 day
-    },
+      'Cache-Control': 'public, max-age=86400' // Cache for 1 day
+    }
   });
 };

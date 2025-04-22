@@ -6,13 +6,95 @@ package api;
 
 service QueryService {
     rpc MakeQuery(QueryRequest) returns (QueryResponse);
+    rpc StartNewConversation(StartNewConversationRequest) returns (StartNewConversationResponse);
+    rpc GetAllConversations(QueryGetAllConversationsRequest) returns (QueryGetAllConversationsResponse);
+    rpc GetConversation(QueryGetConversationRequest) returns (QueryGetConversationResponse);
+    rpc DeleteConversation(QueryDeleteConversationRequest) returns (QueryDeleteConversationResponse);
 }
 
 message QueryRequest {
-    string conversation_id = 1;
+    string user_id = 1;
+    string conversation_id = 2;
+    string model = 3;
+    string query = 4;
+}
+
+message QueryResponse {}
+
+message StartNewConversationRequest {
+    string user_id = 1;
     string query = 2;
 }
 
-message QueryResponse {
-    bool success = 1;
+message StartNewConversationResponse {
+    string conversation_id = 1;
+}
+
+
+message QueryGetAllConversationsRequest {
+    string user_id = 1;
+}
+
+message QueryGetAllConversationsResponse {
+    repeated QueryConversationHeader conversation_headers = 1;
+}
+
+message QueryGetConversationRequest {
+    string user_id = 1;
+    string conversation_id = 2;
+}
+
+message QueryGetConversationResponse {
+	QueryConversation conversation = 1;
+}
+
+message QueryDeleteConversationRequest {
+	string user_id = 1;
+	string conversation_id = 2;
+}
+
+message QueryDeleteConversationResponse {}
+
+
+/* general use */
+
+message QueryTokenMessage {
+	string type = 1;
+	string token = 2;
+}
+
+message QuerySourceMessage {
+    string type = 1;
+    int32 excerpt_number = 2;
+    string title = 3;
+    string extension = 4;
+    string file_path = 5;
+    string file_url = 6;
+}
+
+// this is a giant block of text either from the model or from the user
+// if it's from the model, it will contain reasoning and sources
+// if it's from the user, it will only contain text
+message QueryMessage {
+    string text = 1;
+    string sender = 2; // should be "user" or "model"
+    string model = 3; // will be blank for sender = "user", but e.g. "gemini-2.0-flash" for sender = "model"
+    repeated string reasoning = 4;
+    repeated QuerySourceMessage sources = 5;
+}
+
+message QueryConversation {
+    string conversation_id = 1;
+    string title = 2;
+    repeated QueryMessage summarized_messages = 3;
+    repeated QueryMessage full_messages = 4;
+}
+
+message QueryConversationHeader {
+    string title = 1;
+    string conversation_id = 2;
+}
+
+message QueryOwnershipMapping {
+    repeated QueryConversationHeader conversation_headers = 1;
 }

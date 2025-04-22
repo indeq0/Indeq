@@ -2,26 +2,27 @@ package main
 
 import (
 	"context"
-	"log"
-	"os"
-	"time"
 	"database/sql"
+	"log"
 	"net"
 	"net/mail"
+	"os"
+	"time"
 
 	pb "github.com/cc-0000/indeq/common/api"
+	"github.com/cc-0000/indeq/common/config"
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"github.com/cc-0000/indeq/common/config"
 )
 
 type WaitlistServer struct {
 	pb.UnimplementedWaitlistServiceServer
-	db *sql.DB  // waitlist db
+	db *sql.DB // waitlist db
 }
 
 func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlistRequest) (*pb.AddToWaitlistResponse, error) {
+	log.Println("Adding to waitlist:", req.Email)
 	_, err := mail.ParseAddress(req.Email)
 	if err != nil {
 		return &pb.AddToWaitlistResponse{
@@ -67,20 +68,20 @@ func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlis
 
 func main() {
 	log.Println("Starting the waitlist server...")
-	
+
 	// Load all environmental variables
 	err := config.LoadSharedConfig()
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
-	
+
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Fatalf("DATABASE_URL environment variable is required")
 	}
 
 	// Load the TLS configuration values
-	tlsConfig, err := config.LoadTLSFromEnv("WAITLIST_CRT", "WAITLIST_KEY")
+	tlsConfig, err := config.LoadServerTLSFromEnv("WAITLIST_CRT", "WAITLIST_KEY")
 	if err != nil {
 		log.Fatal("Error loading TLS config for waitlist service")
 	}
@@ -91,7 +92,7 @@ func main() {
 	}
 	defer db.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	_, err = db.ExecContext(ctx, `
@@ -122,7 +123,7 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	defer listener.Close()
-	
+
 	log.Println("Creating the waitlist server...")
 
 	opts := []grpc.ServerOption{

@@ -21,7 +21,7 @@ let dbConnection: ReturnType<typeof client.db> | null = null;
 // Connect to MongoDB
 async function connectToDatabase() {
   if (dbConnection) return dbConnection;
-  
+
   try {
     await client.connect();
     dbConnection = client.db(DB_NAME);
@@ -35,22 +35,26 @@ async function connectToDatabase() {
 // Email validation function
 function isValidEmail(email: string): boolean {
   // RFC 5322 compliant email regex
-  const emailRegex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  const emailRegex =
+    /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return emailRegex.test(email);
 }
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
     const { email } = await request.json();
-    
+
     // Check if email is provided
     if (!email) {
       return json({ success: false, message: 'Email is required!' }, { status: 400 });
     }
-    
+
     // Validate email format
     if (!isValidEmail(email)) {
-      return json({ success: false, message: 'Please provide a valid email address!' }, { status: 400 });
+      return json(
+        { success: false, message: 'Please provide a valid email address!' },
+        { status: 400 }
+      );
     }
 
     // Normalize email to lowercase
@@ -59,42 +63,48 @@ export const POST: RequestHandler = async ({ request }) => {
     // Connect to MongoDB
     const db = await connectToDatabase();
     const collection = db.collection(COLLECTION_NAME);
-    
+
     // Use updateOne with upsert option to handle race conditions
     // This will either:
     // 1. Insert the document if it doesn't exist
     // 2. Do nothing if it already exists (due to the filter)
     const result = await collection.updateOne(
       { email: normalizedEmail }, // filter
-      { 
-        $setOnInsert: { 
+      {
+        $setOnInsert: {
           email: normalizedEmail,
           createdAt: new Date(),
           source: 'website'
-        } 
+        }
       },
       { upsert: true } // create if doesn't exist
     );
-    
+
     // Check if a new document was inserted
     if (result.upsertedCount === 0 && result.matchedCount > 0) {
       // Email already exists
-      return json({ 
-        success: false, 
-        message: 'Email is already on the waitlist! 😊' 
-      }, { status: 400 });
+      return json(
+        {
+          success: false,
+          message: 'Email is already on the waitlist! 😊'
+        },
+        { status: 400 }
+      );
     }
-    
-    return json({ 
-      success: true, 
-      message: 'Successfully added to the waitlist! 🎉' 
+
+    return json({
+      success: true,
+      message: 'Successfully added to the waitlist! 🎉'
     });
   } catch (error) {
     console.error('Waitlist API error:', error);
-    return json({ 
-      success: false, 
-      message: 'Server error processing your request! 😢' 
-    }, { status: 500 });
+    return json(
+      {
+        success: false,
+        message: 'Server error processing your request! 😢'
+      },
+      { status: 500 }
+    );
   }
 };
 
@@ -102,4 +112,4 @@ export const POST: RequestHandler = async ({ request }) => {
 process.on('SIGINT', async () => {
   await client.close();
   process.exit(0);
-}); 
+});

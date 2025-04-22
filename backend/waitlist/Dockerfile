@@ -9,23 +9,19 @@ RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 # Copy module files first
-COPY go.work go.work.sum ./
-COPY gateway/go.mod gateway/go.sum ./gateway/
-COPY common/go.mod common/go.sum ./common/
-COPY query/go.mod query/go.sum ./query/
-COPY authentication/go.mod authentication/go.sum ./authentication/
 COPY waitlist/go.mod waitlist/go.sum ./waitlist/
+COPY common/go.mod common/go.sum ./common/
 
 # Download dependencies
 RUN cd waitlist && go mod download
-
-# Copy proto files
-COPY common/api/waitlist.proto ./common/api/
-RUN protoc --go_out=. --go-grpc_out=. common/api/waitlist.proto
+RUN cd common && go mod download
 
 # Copy source code
 COPY waitlist/ ./waitlist/
 COPY common/ ./common/
+
+# Create the proto files if they aren't already generated
+RUN cd common && make gen
 
 # Build binary with module replacement
 RUN cd waitlist && \

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option go_package = "github.com/cc-0000/indeq/common/api";
+
+import "api/kafka.proto";
+
+package api;
+
+service RetrievalService {
+    rpc RetrieveTopKChunks(RetrieveTopKChunksRequest) returns (RetrieveTopKChunksResponse);
+}
+
+message RetrieveTopKChunksRequest{
+    string user_id = 1;
+    string prompt = 2;
+    string expanded_prompt = 3;
+    int32 k = 4;
+    uint32 ttl = 5;
+}
+
+message RetrieveTopKChunksResponse {
+    repeated TextChunkMessage top_k_chunks = 1;
+}
+

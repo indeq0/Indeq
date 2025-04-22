@@ -26,6 +26,7 @@ We are a unified search engine for **your data**
 [![Commitlint](https://img.shields.io/badge/-commitlint-%2300000?style=for-the-badge&logo=commitlint&logoColor=white)](https://commitlint.js.org)
 [![EKS](https://img.shields.io/badge/-Amazon%20EKS-%23FF9900?style=for-the-badge&logo=Amazon%20EKS&logoColor=white)](https://aws.amazon.com/eks)
 [![MongoDB](https://img.shields.io/badge/-MongoDB-%234DB33D?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com)
+[![Redis](https://img.shields.io/badge/-Redis-%23DC382D?style=for-the-badge&logo=Redis&logoColor=white)](https://redis.io)
 
 **Currently Supporting**
 

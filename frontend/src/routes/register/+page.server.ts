@@ -1,68 +1,106 @@
-import { fail, type Cookies } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { GO_BACKEND_URL } from '$env/static/private';
 
 const login = async (email: string, password: string, cookies: Cookies) => {
-    const loginRes = await fetch(`${GO_BACKEND_URL}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ "email": email, "password": password }),
-    });
+  const loginRes = await fetch(`${GO_BACKEND_URL}/api/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, password: password })
+  });
 
-    if (!loginRes.ok) {
-        const msg = await loginRes.text();
-        return fail(loginRes.status, { error: msg });
-    }
+  if (!loginRes.ok) {
+    const msg = await loginRes.text();
+    return fail(loginRes.status, { error: msg });
+  }
 
-    const response = await loginRes.json();
-    cookies.set('jwt', response.token, {
-        httpOnly: true,
-        secure: true,
-        path: '/',
-        maxAge: 60 * 60 * 24,
-        sameSite: 'strict'
-    });
-}
+  const response = await loginRes.json();
+  cookies.set('jwt', response.token, {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 60 * 60 * 24,
+    sameSite: 'lax'
+  });
+
+  cookies.set('registering', 'true', {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 5,
+    sameSite: 'lax'
+  });
+
+  cookies.set('user_created', 'true', {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 5,
+    sameSite: 'lax'
+  });
+
+  cookies.set("redirected_from", "register", {
+    httpOnly: true, // Prevent client-side access
+    secure: true, // Only send over HTTPS
+    path: '/', // Accessible across the entire app
+    maxAge: 5, // 5 seconds
+    sameSite: 'lax'
+  });
+};
 
 export const actions = {
-    default: async ({ request, cookies }) => {
-        const data = await request.formData();
-        const email = data.get('email');
-        const password = data.get('password');
-        const name = data.get('name');
+  default: async ({ request, cookies }) => {
+    const data = await request.formData();
+    const email = data.get('email');
+    const name = data.get('name');
+    const password = data.get('password');
 
-        // Basic validation
-        if (!email || !password || !name) {
-            return fail(400, {
-                error: 'Email, password and name are required',
-                email: email?.toString(),
-                name: name?.toString()
-            });
-        }
-        
-        const registerRes = await fetch(`${GO_BACKEND_URL}/api/register`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ "email": email, "name": name, "password": password }),
-        });
-
-        if (!registerRes.ok) {
-            const msg = await registerRes.text();
-
-            // Return an error to the page to display
-            return fail(registerRes.status, { error: msg });
-        }
-
-        const response = await registerRes.json();
-
-        if (response.success) {
-            await login(email.toString(), password.toString(), cookies);
-            return { success: true };
-        } else {
-            return fail(400, { error: response.error });
-        }
-        
+    if (!email || !name || !password) {
+      return fail(400, {
+        error: 'Email, name, and password are required',
+        email: email?.toString(),
+        name: name?.toString()
+      });
     }
+
+    const registerRes = await fetch(`${GO_BACKEND_URL}/api/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, name, password })
+    });
+
+    if (!registerRes.ok) {
+      const msg = await registerRes.text();
+      return fail(registerRes.status, { error: msg });
+    }
+
+    const response = await registerRes.json();
+    if (!response.success) {
+      return fail(400, { error: response.error });
+    }
+
+    if (response.error == "Linked to Existing Google Account" && response.token) {
+      cookies.set('jwt', response.token, {
+        httpOnly: true, // Prevent client-side access
+        secure: true, // Only send over HTTPS
+        path: '/', // Accessible across the entire app
+        maxAge: 60 * 60 * 24, // 1 day
+        sameSite: 'lax'
+      });
+      
+      return { success: true, linked: true};
+    }
+
+    cookies.set('pendingRegisterToken', response.token, {
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      maxAge: 300, // 5 minutes
+    });
+
+    return { success: true };
+  }
 } satisfies Actions;

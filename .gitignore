@@ -1,6 +1,8 @@
 # Generated Protocol Buffer files
 *.pb.go
 *.pb.gw.go
+*_pb2.py
+*_pb2_grpc.py
 
 # Go specific
 /bin/
@@ -31,7 +33,6 @@
 /build/
 
 # Environment variables
-.env
 .env.local
 backend-config.yaml
 root_ca.crt
@@ -43,4 +44,10 @@ root_ca.crt
 .cache/
 
 package-lock.json
+frontend/package-lock.json
+
+# certificates
+certs*
+
+# other
 node_modules
