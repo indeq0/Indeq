@@ -449,7 +449,7 @@ jobs:
     - name: Predeploy Cleanup
       run: |
         # SSH into EC2 to create directories first for clean up
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+        ssh -vvv -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
 
           # Print current directory and list contents
           pwd
