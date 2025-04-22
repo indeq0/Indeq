@@ -387,7 +387,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 		if req.Email != "" {
 			// Create with email, name, and google_id
 			err = tx.QueryRowContext(ctx,
-				"INSERT INTO users (email, name, google_id) VALUES ($1, $2, $3) RETURNING id",
+				"INSERT INTO users (email, name, google_id, alias) VALUES ($1, $2, $3, $2) RETURNING id",
 				strings.ToLower(req.Email),
 				req.Name,
 				req.GoogleId,
@@ -395,7 +395,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 		} else {
 			// Create with just name and google_id
 			err = tx.QueryRowContext(ctx,
-				"INSERT INTO users (name, google_id) VALUES ($1, $2) RETURNING id",
+				"INSERT INTO users (name, google_id, alias) VALUES ($1, $2, $1) RETURNING id",
 				req.Name,
 				req.GoogleId,
 			).Scan(&userId)
