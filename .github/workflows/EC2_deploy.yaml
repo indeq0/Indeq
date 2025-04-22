@@ -121,8 +121,8 @@ jobs:
             sudo systemctl enable docker
             sudo usermod -aG docker ec2-user
             echo "Docker installed successfully"
-          fi
-
+          fi 
+          
           # Create necessary directories if they don't exist
           if [ ! -d "/home/ec2-user/common/config" ]; then
             mkdir -p /home/ec2-user/common/config
