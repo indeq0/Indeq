@@ -6,7 +6,21 @@ import { APP_ENV } from '$env/static/private';
 
 export const handle: Handle = async ({ event, resolve }) => {
   const jwt = event.cookies.get('jwt');
+  const betaPassed = event.cookies.get('betaPassed') === 'true';
   const isAuthenticated = jwt && (await verifyToken(jwt));
+
+  if (APP_ENV === 'PRODUCTION') {
+    const alwaysAllowed = ['/', '/login', '/beta-code'];
+    if (!alwaysAllowed.includes(event.url.pathname)) {
+      if (!(event.url.pathname === '/register' && betaPassed)) {
+        return redirect(302, '/');
+      }
+    }
+  }
+
+  if (isAuthenticated && ['/login', '/register'].includes(event.url.pathname) && event.request.method === 'GET') {
+    return redirect(302, '/chat');
+  }
 
   const publicRoutes = [
     '/',
@@ -23,26 +37,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     '/sso/GOOGLE/callback'
   ];
 
-  const authRoutes = ['/login', '/register'];
-
-  const productionRoutes = ['/', '/terms', '/privacy', '/api/waitlist', '/sitemap.xml'];
-
-  if (APP_ENV === 'PRODUCTION' && !productionRoutes.includes(event.url.pathname)) {
-    return redirect(302, '/');
-  }
-
-  // Redirect authenticated users away from login and register pages
-  if (isAuthenticated && authRoutes.includes(event.url.pathname) && event.request.method === 'GET') {  
-    return redirect(302, `/chat`);
-  }
-
   if (!publicRoutes.includes(event.url.pathname)) {
-    const isValid = jwt && (await verifyToken(jwt));
-
-    if (!isValid) {
+    if (!isAuthenticated) {
       return redirect(302, '/login');
     }
   }
 
   return resolve(event);
 };
+

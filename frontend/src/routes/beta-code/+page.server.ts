@@ -1,9 +1,9 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { PUBLIC_GO_BACKEND_URL } from '$env/static/public';
 
 export const actions: Actions = {
-	default: async ({ request }) => {
+  default: async ({ request, cookies }) => {
     const formData = await request.formData();
     const betaCode = formData.get('betaCode') as string;
     const email = formData.get('email') as string;
@@ -11,22 +11,25 @@ export const actions: Actions = {
       return fail(400, { error: 'Missing email or beta code.' });
     }
 
-    try {      
+    try {
       const res = await fetch(`${PUBLIC_GO_BACKEND_URL}/api/validate-beta-code`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ beta_code: betaCode, email })
       });
-
       const data = await res.json();
-      if (!res.ok) {
+
+      if (!res.ok || !data.success) {
         return fail(res.status, { error: data.message ?? 'Access denied.' });
       }
-      if (!data.success) {
-        return fail(res.status, { error: data.message ?? 'Access denied.' });
-      }
+
+      cookies.set('betaPassed', 'true', {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 60 * 10
+      });
 
       return { success: true };
     } catch (err) {
