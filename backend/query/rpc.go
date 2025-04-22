@@ -241,7 +241,6 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 		fullprompt += "Instructions: Provide a comprehensive answer to the question above, using the given excerpts plus the conversation history if necessary, but falling back to your expert general knowledge if the excerpts are insufficient. Cite excerpts using the <number_of_excerpt_in_question> (for example, when citing Excerpt: 1, use <1>) of the document."
 	}
 
-	// TODO: add the option to use more than 1 model
 	conversation, err := s.getConversation(ctx, req.ConversationId)
 	if err != nil {
 		return &pb.QueryResponse{}, fmt.Errorf("failed to get conversation: %w", err)
@@ -356,11 +355,13 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 	oldConversation.FullMessages = append(oldConversation.FullMessages, userMessage)
 	oldConversation.SummarizedMessages = append(oldConversation.SummarizedMessages, userMessage)
 
+	// store the llm response
 	llmMessage := &pb.QueryMessage{
 		Text:      *llmResponse,
 		Sender:    "model",
+		Model:     req.Model,
 		Sources:   *sources,
-		Reasoning: []string{}, // TODO: implement reasoning for reasoning models
+		Reasoning: []string{},
 	}
 	// if we have reasoning, add it to the message
 	if *reasoningResponse != "" {
@@ -372,6 +373,24 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 	oldConversation, err = s.summarizeConversation(ctx, oldConversation)
 	if err != nil {
 		return &pb.QueryResponse{}, fmt.Errorf("failed to summarize conversation: %w", err)
+	}
+
+	// add a summarized title if this is the first llm response
+	if len(oldConversation.FullMessages) == 2 {
+		allConversationHeaders, err1 := s.getOwnershipMapping(ctx, req.UserId)
+		title, err2 := s.generateSummarizedTitle(ctx, oldConversation)
+		if err1 == nil && err2 == nil { // only set the title if no errors were encountered in the process
+			oldConversation.Title = title
+
+			// update the title in the conversation headers
+			for i, header := range allConversationHeaders {
+				if header.ConversationId == oldConversation.ConversationId {
+					allConversationHeaders[i].Title = title
+					break
+				}
+			}
+			_ = s.updateOwnershipMapping(ctx, req.UserId, allConversationHeaders)
+		}
 	}
 
 	err = s.updateConversation(ctx, req.ConversationId, oldConversation)

@@ -33,48 +33,51 @@ func createUser(ctx context.Context, tx *sql.Tx, email string, passwordHash stri
 //   - fetches a user's email, password hash, name, and alias from the users table with the given user ID in the given transaction
 //   - returns: email, password hash, name, alias, or an error
 //   - assumes: you will close this transaction in the parent function!
-func getUserById(ctx context.Context, tx *sql.Tx, userId string) (string, string, string, string, error) {
+func getUserById(ctx context.Context, tx *sql.Tx, userId string) (string, string, string, string, int, error) {
 	var email, passwordHash, name, alias string
+	var avatarNum int
 	err := tx.QueryRowContext(
 		ctx,
-		"SELECT email, password_hash, name, alias FROM users WHERE id = $1",
+		"SELECT email, password_hash, name, alias, avatar_num FROM users WHERE id = $1",
 		userId,
-	).Scan(&email, &passwordHash, &name, &alias)
+	).Scan(&email, &passwordHash, &name, &alias, &avatarNum)
 	if err != nil {
-		return "", "", "", "", err
+		return "", "", "", "", 0, err
 	}
-	return email, passwordHash, name, alias, nil
+	return email, passwordHash, name, alias, avatarNum, nil
 }
 
 // func(context, current open transaction, email)
 //   - fetches a user's id, password hash, name, and alias from the users table with the given email in the given transaction
 //   - returns: user ID, password hash, name, alias, or an error
 //   - assumes: you will close this transaction in the parent function!
-func getUserByEmail(ctx context.Context, tx *sql.Tx, email string) (string, string, string, string, error) {
+func getUserByEmail(ctx context.Context, tx *sql.Tx, email string) (string, string, string, string, int, error) {
 	var userId, passwordHash, name, alias string
+	var avatarNum int
 	err := tx.QueryRowContext(
 		ctx,
-		"SELECT id, password_hash, name, alias FROM users WHERE email = $1",
+		"SELECT id, password_hash, name, alias, avatar_num FROM users WHERE email = $1",
 		email,
-	).Scan(&userId, &passwordHash, &name, &alias)
+	).Scan(&userId, &passwordHash, &name, &alias, &avatarNum)
 	if err != nil {
-		return "", "", "", "", err
+		return "", "", "", "", 0, err
 	}
-	return userId, passwordHash, name, alias, nil
+	return userId, passwordHash, name, alias, avatarNum, nil
 }
 
 // func(context, current open transaction, user ID, email, password hash, name, alias)
 //   - updates a user's email, password hash, name, and alias in the users table with the given user ID in the given transaction
 //   - returns: the updated user's ID or an error
 //   - assumes: you will close this transaction in the parent function!
-func updateUser(ctx context.Context, tx *sql.Tx, userId string, email string, passwordHash string, name string, alias string) (string, error) {
+func updateUser(ctx context.Context, tx *sql.Tx, userId string, email string, passwordHash string, name string, alias string, avatarNum int) (string, error) {
 	_, err := tx.ExecContext(
 		ctx,
-		`UPDATE users SET email = $1, password_hash = $2, name = $3, alias = $4 WHERE id = $5`,
+		`UPDATE users SET email = $1, password_hash = $2, name = $3, alias = $4, avatar_num = $5 WHERE id = $6`,
 		email,
 		passwordHash,
 		name,
 		alias,
+		avatarNum,
 		userId,
 	)
 	if err != nil {

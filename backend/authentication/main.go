@@ -166,6 +166,7 @@ func (s *authServer) connectToDatabase(ctx context.Context, contextDuration time
             name VARCHAR(255) NOT NULL,
             google_id VARCHAR(255) UNIQUE,
 			alias VARCHAR(255) NOT NULL,
+			avatar_num INT NOT NULL DEFAULT 1,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT password_required_if_no_google CHECK (

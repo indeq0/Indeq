@@ -17,8 +17,8 @@ service AuthenticationService {
     rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
     rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
     rpc ResendOTP(ResendOTPRequest) returns (ResendOTPResponse);
-    rpc SetAlias(SetAliasRequest) returns (SetAliasResponse);
-    rpc GetAlias(GetAliasRequest) returns (GetAliasResponse);
+    rpc SetUserAccountSettings(SetUserAccountSettingsRequest) returns (SetUserAccountSettingsResponse);
+    rpc GetUserAccountSettings(GetUserAccountSettingsRequest) returns (GetUserAccountSettingsResponse);
     rpc DeleteAccount(DeleteUserRequest) returns (DeleteUserResponse);
 }
 
@@ -32,6 +32,7 @@ message LoginResponse {
     string user_id = 2;
     string name = 3;
     string alias = 4;
+    int32 avatar_num = 5;
 }
 
 message RegisterRequest {
@@ -118,20 +119,25 @@ message ResetPasswordResponse {
     string error = 2;
 }
 
-message SetAliasRequest {
+message SetUserAccountSettingsRequest {
     string user_id = 1;
     string alias = 2;
+    string name = 3;
+    int32 avatar_num = 4;
 }
 
-message SetAliasResponse {
+message SetUserAccountSettingsResponse {
 }
 
-message GetAliasRequest {
+message GetUserAccountSettingsRequest {
     string user_id = 1;
 }
 
-message GetAliasResponse {
+message GetUserAccountSettingsResponse {
     string alias = 1;
+    string name = 2;
+    string email = 3;
+    int32 avatar_num = 4;
 }
 
 message DeleteUserRequest {

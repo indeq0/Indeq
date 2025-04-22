@@ -70,7 +70,8 @@ message HttpLoginResponse {
   string user_id = 2;
   string name = 3;
   string alias = 4;
-  string error = 5;
+  int32 avatar_num = 5;
+  string error = 6;
 }
 
 message HttpVerifyResponse {
@@ -88,16 +89,21 @@ message HttpCSRResponse {
   string error = 2;
 }
 
-message HttpSetAliasRequest {
-  string alias = 1;
+message HttpSetMeRequest {
+  string name = 1;
+  string alias = 2;
+  int32 avatar_num = 3;
 }
 
-message HttpSetAliasResponse {}
+message HttpSetMeResponse {}
 
-message HttpGetAliasRequest {}
+message HttpGetMeRequest {}
 
-message HttpGetAliasResponse {
+message HttpGetMeResponse {
   string alias = 1;
+  string name = 2;
+  string email = 3;
+  int32 avatar_num = 4;
 }
 
 message HttpGetIntegrationsRequest {
