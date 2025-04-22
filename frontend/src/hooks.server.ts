@@ -9,23 +9,11 @@ export const handle: Handle = async ({ event, resolve }) => {
   const betaPassed = event.cookies.get('betaPassed') === 'true';
   const isAuthenticated = jwt && (await verifyToken(jwt));
 
-  if (APP_ENV === 'PRODUCTION') {
-    const alwaysAllowed = ['/', '/login', '/beta-code'];
-    if (!alwaysAllowed.includes(event.url.pathname)) {
-      if (!(event.url.pathname === '/register' && betaPassed)) {
-        return redirect(302, '/');
-      }
-    }
-  }
-
-  if (isAuthenticated && ['/login', '/register'].includes(event.url.pathname) && event.request.method === 'GET') {
-    return redirect(302, '/chat');
-  }
-
   const publicRoutes = [
     '/',
     '/login',
     '/register',
+    '/beta-code',
     '/enter-code',
     '/forgot-password',
     '/reset-password',
@@ -36,6 +24,21 @@ export const handle: Handle = async ({ event, resolve }) => {
     '/sso/GOOGLE',
     '/sso/GOOGLE/callback'
   ];
+
+  const authRoutes = ['/login', '/register'];
+  const productionRoutes = ['/', '/terms', '/privacy', '/api/waitlist', '/sitemap.xml', '/login', '/beta-code'];
+
+  if (APP_ENV === 'PRODUCTION') {
+    if (!productionRoutes.includes(event.url.pathname)) {
+      if (!(event.url.pathname === '/register' && betaPassed)) {
+        return redirect(302, '/');
+      }
+    }
+  }
+
+  if (isAuthenticated && authRoutes.includes(event.url.pathname) && event.request.method === 'GET') {
+    return redirect(302, '/chat');
+  }
 
   if (!publicRoutes.includes(event.url.pathname)) {
     if (!isAuthenticated) {
