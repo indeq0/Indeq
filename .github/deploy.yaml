@@ -50,16 +50,55 @@ jobs:
     - name: Generate .env Files
       env:
         AUTH_PORT: ${{ secrets.AUTH_PORT }}
+        DEV_PROD: ${{ secrets.DEV_PROD }} 
         AUTH_ADDRESS: ${{ secrets.AUTH_ADDRESS }}
         QUERY_PORT: ${{ secrets.QUERY_PORT }}
         QUERY_ADDRESS: ${{ secrets.QUERY_ADDRESS }}
         VECTOR_PORT: ${{ secrets.VECTOR_PORT }}
         VECTOR_ADDRESS: ${{ secrets.VECTOR_ADDRESS }}
+        DESKTOP_ADDRESS: ${{ secrets.DESKTOP_ADDRESS }}
+        DESKTOP_PORT: ${{ secrets.DESKTOP_PORT }}
+        RETRIEVAL_ADDRESS: ${{ secrets.RETRIEVAL_ADDRESS }}
+        RETRIEVAL_PORT: ${{ secrets.RETRIEVAL_PORT }}
+        WAITLIST_ADDRESS: ${{ secrets.WAITLIST_ADDRESS }}
+        WAITLIST_PORT: ${{ secrets.WAITLIST_PORT }}
+        INTEGRATION_ADDRESS: ${{ secrets.INTEGRATION_ADDRESS }}
+        INTEGRATION_PORT: ${{ secrets.INTEGRATION_PORT }}
         GATEWAY_ADDRESS: ${{ secrets.GATEWAY_ADDRESS }}
+        CRAWLING_PORT: ${{ secrets.CRAWLING_PORT }}
+        CRAWLING_ADDRESS: ${{ secrets.CRAWLING_ADDRESS }}
+        COUCHDB_ADDRESS: ${{ secrets.COUCHDB_ADDRESS }}
+        MQTT_ADDRESS: ${{ secrets.MQTT_ADDRESS }}
+        MQTT_PORT: ${{ secrets.MQTT_PORT }}
+        EMBEDDING_MODEL_NAME: ${{ secrets.EMBEDDING_MODEL_NAME }}
+        EMBEDDING_RERANKER: ${{ secrets.EMBEDDING_RERANKER }}
+        EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
+        EMBEDDING_ADDRESS: ${{ secrets.EMBEDDING_ADDRESS }}
+        EMBEDDING_MAX_WORKERS: ${{ secrets.EMBEDDING_MAX_WORKERS }}
+        EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT: ${{ secrets.EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT }}
+        CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS }}
+        CRAWLING_GMAIL_MAX_WORKERS: ${{ secrets.CRAWLING_GMAIL_MAX_WORKERS }}
+        CRAWLING_DRIVE_MAX_WORKERS: ${{ secrets.CRAWLING_DRIVE_MAX_WORKERS }}
+        CRAWLING_GOOGLEDOCS_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLEDOCS_MAX_WORKERS }}
+        CRAWLING_GOOGLESLIDES_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLESLIDES_MAX_WORKERS }}
+        CRAWLING_GOOGLEPDF_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLEPDF_MAX_WORKERS }}
+        CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS: ${{ secrets.CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS }}
+        VECTOR_BATCH_SIZE: ${{ secrets.VECTOR_BATCH_SIZE }}
+        VECTOR_BATCH_TIMEOUT: ${{ secrets.VECTOR_BATCH_TIMEOUT }}
+        QUERY_NUMBER_OF_SOURCES: ${{ secrets.QUERY_NUMBER_OF_SOURCES }}
+        QUERY_TTL: ${{ secrets.QUERY_TTL }}
+        QUERY_QUEUE_TTL: ${{ secrets.QUERY_QUEUE_TTL }}
+        QUERY_EXPANSION: ${{ secrets.QUERY_EXPANSION }}
+        QUERY_SUMMARY_UPPER_BOUND: ${{ secrets.QUERY_SUMMARY_UPPER_BOUND }}
+        QUERY_SUMMARY_LOWER_BOUND: ${{ secrets.QUERY_SUMMARY_LOWER_BOUND }}
+        QUERY_DEFAULT_MODEL: ${{ secrets.QUERY_DEFAULT_MODEL }}
+        RETRIEVAL_K_VAL: ${{ secrets.RETRIEVAL_K_VAL }}
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
         POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        COUCHDB_USER: ${{ secrets.COUCHDB_USER }}
+        COUCHDB_PASSWORD: ${{ secrets.COUCHDB_PASSWORD }}
         JWT_SECRET: ${{ secrets.JWT_SECRET }}
         ARGON2_MEMORY: ${{ secrets.ARGON2_MEMORY }}
         ARGON2_ITERATIONS: ${{ secrets.ARGON2_ITERATIONS }}
@@ -73,18 +112,84 @@ jobs:
         RABBITMQ_DEFAULT_USER: ${{ secrets.RABBITMQ_DEFAULT_USER }}
         RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
         RABBITMQ_LOGS: ${{ secrets.RABBITMQ_LOGS }}
+        KAFKA_BROKER_ADDRESS: ${{ secrets.KAFKA_BROKER_ADDRESS }}
+        KAFKA_BROKER_ID: ${{ secrets.KAFKA_BROKER_ID }}
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${{ secrets.KAFKA_LISTENER_SECURITY_PROTOCOL_MAP }}
+        KAFKA_ADVERTISED_LISTENERS: ${{ secrets.KAFKA_ADVERTISED_LISTENERS }}
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${{ secrets.KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR }}
+        KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: ${{ secrets.KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS }}
+        KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${{ secrets.KAFKA_TRANSACTION_STATE_LOG_MIN_ISR }}
+        KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${{ secrets.KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR }}
+        KAFKA_PROCESS_ROLES: ${{ secrets.KAFKA_PROCESS_ROLES }}
+        KAFKA_NODE_ID: ${{ secrets.KAFKA_NODE_ID }}
+        KAFKA_CONTROLLER_QUORUM_VOTERS: ${{ secrets.KAFKA_CONTROLLER_QUORUM_VOTERS }}
+        KAFKA_LISTENERS: ${{ secrets.KAFKA_LISTENERS }}
+        KAFKA_INTER_BROKER_LISTENER_NAME: ${{ secrets.KAFKA_INTER_BROKER_LISTENER_NAME }}
+        KAFKA_CONTROLLER_LISTENER_NAMES: ${{ secrets.KAFKA_CONTROLLER_LISTENER_NAMES }}
+        CLUSTER_ID: ${{ secrets.CLUSTER_ID }}
+        KAFKA_LOG4J_ROOT_LOGLEVEL: ${{ secrets.KAFKA_LOG4J_ROOT_LOGLEVEL }}
+        KAFKA_LOG4J_LOGGERS: ${{ secrets.KAFKA_LOG4J_LOGGERS }}
         OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         LLM_MODEL: ${{ secrets.LLM_MODEL }}
         ZILLIZ_ADDRESS: ${{ secrets.ZILLIZ_ADDRESS }}
         ZILLIZ_API_KEY: ${{ secrets.ZILLIZ_API_KEY }}
+        VECTOR_DIMENSION: ${{ secrets.VECTOR_DIMENSION }}
+        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+        GOOGLE_AUTH_URL: ${{ secrets.GOOGLE_AUTH_URL }}
+        GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+        GOOGLE_SCOPES: ${{ secrets.GOOGLE_SCOPES }}
+        GOOGLE_SSO_CLIENT_ID: ${{ secrets.GOOGLE_SSO_CLIENT_ID }}
+        GOOGLE_SSO_CLIENT_SECRET: ${{ secrets.GOOGLE_SSO_CLIENT_SECRET }}
+        GOOGLE_SSO_REDIRECT_URI: ${{ secrets.GOOGLE_SSO_REDIRECT_URI }}
+        GOOGLE_SSO_SCOPES: ${{ secrets.GOOGLE_SSO_SCOPES }}
+        MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+        MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+        MICROSOFT_AUTH_URL: ${{ secrets.MICROSOFT_AUTH_URL }}
+        MICROSOFT_REDIRECT_URI: ${{ secrets.MICROSOFT_REDIRECT_URI }}
+        MICROSOFT_SCOPES: ${{ secrets.MICROSOFT_SCOPES }}
+        NOTION_CLIENT_ID: ${{ secrets.NOTION_CLIENT_ID }}
+        NOTION_CLIENT_SECRET: ${{ secrets.NOTION_CLIENT_SECRET }}
+        NOTION_REDIRECT_URI: ${{ secrets.NOTION_REDIRECT_URI }}
+        NOTION_AUTH_URL: ${{ secrets.NOTION_AUTH_URL }}
+        REDIS_ADDRESS: ${{ secrets.REDIS_ADDRESS }}
+        REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+        ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
         CA_CRT: ${{ secrets.CA_CRT }}
+        CA_KEY: ${{ secrets.CA_KEY }}
         QUERY_CRT: ${{ secrets.QUERY_CRT }}
         QUERY_KEY: ${{ secrets.QUERY_KEY }}
         AUTH_CRT: ${{ secrets.AUTH_CRT }}
         AUTH_KEY: ${{ secrets.AUTH_KEY }}
+        VECTOR_CRT: ${{ secrets.VECTOR_CRT }}
+        VECTOR_KEY: ${{ secrets.VECTOR_KEY }}
         GATEWAY_CRT: ${{ secrets.GATEWAY_CRT }}
         GATEWAY_KEY: ${{ secrets.GATEWAY_KEY }}
+        DESKTOP_CRT: ${{ secrets.DESKTOP_CRT }}
+        DESKTOP_KEY: ${{ secrets.DESKTOP_KEY }}
+        EMBEDDING_CRT: ${{ secrets.EMBEDDING_CRT }}
+        EMBEDDING_KEY: ${{ secrets.EMBEDDING_KEY }}
+        RETRIEVAL_CRT: ${{ secrets.RETRIEVAL_CRT }}
+        RETRIEVAL_KEY: ${{ secrets.RETRIEVAL_KEY }}
+        MQTT_CRT: ${{ secrets.MQTT_CRT }}
+        MQTT_KEY: ${{ secrets.MQTT_KEY }}
+        WAITLIST_CRT: ${{ secrets.WAITLIST_CRT }}
+        WAITLIST_KEY: ${{ secrets.WAITLIST_KEY }}
+        INTEGRATION_CRT: ${{ secrets.INTEGRATION_CRT }}
+        INTEGRATION_KEY: ${{ secrets.INTEGRATION_KEY }}
+        CRAWLING_CRT: ${{ secrets.CRAWLING_CRT }}
+        CRAWLING_KEY: ${{ secrets.CRAWLING_KEY }}
         ALLOWED_CLIENT_IP: ${{ secrets.ALLOWED_CLIENT_IP }}
+        SMTP_FROM: ${{ secrets.SMTP_FROM }}
+        SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        EC2_KEY_PAIR: ${{ secrets.EC2_KEY_PAIR }}
+        EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
       
       run: |
         chmod +x ./generate_env.sh
