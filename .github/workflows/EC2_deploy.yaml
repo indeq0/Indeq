@@ -51,22 +51,22 @@ jobs:
     ## comment out ending here  
 
     - name: Create combined .env file
-        run: |
-          # Create .env file with all environment chunks
-          echo "${{ secrets.ENV1 }}" > .env
-          echo "${{ secrets.ENV2 }}" >> .env
-          echo "${{ secrets.ENV3 }}" >> .env
-          echo "${{ secrets.ENV4 }}" >> .env
-          echo "${{ secrets.ENV5 }}" >> .env
-          echo "${{ secrets.ENV6 }}" >> .env
-          echo "${{ secrets.ENV7 }}" >> .env
+      run: |
+        # Create .env file with all environment chunks
+        echo "${{ secrets.ENV1 }}" > .env
+        echo "${{ secrets.ENV2 }}" >> .env
+        echo "${{ secrets.ENV3 }}" >> .env
+        echo "${{ secrets.ENV4 }}" >> .env
+        echo "${{ secrets.ENV5 }}" >> .env
+        echo "${{ secrets.ENV6 }}" >> .env
+        echo "${{ secrets.ENV7 }}" >> .env
 
-          # Remove empty lines and duplicates while preserving order
-          cat .env | grep -v '^$' | awk '!seen[$0]++' > .env.tmp
-          mv .env.tmp .env
-          
-          echo "Created .env with $(wc -l < .env) lines"
-          
+        # Remove empty lines and duplicates while preserving order
+        cat .env | grep -v '^$' | awk '!seen[$0]++' > .env.tmp
+        mv .env.tmp .env
+        
+        echo "Created .env with $(wc -l < .env) lines"
+
     ## comment out starting here
     # - name: Generate Code
     #   run: |
