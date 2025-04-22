@@ -506,7 +506,7 @@ jobs:
         fi
 
         # SSH into the EC2 instance and run the Docker containers
-        ssh -v -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
           # Install Docker if not already installed
           if ! command -v docker &> /dev/null; then
             echo "Docker not found. Installing..."
@@ -522,9 +522,9 @@ jobs:
           if ! command -v docker-compose &> /dev/null && ! command -v docker compose &> /dev/null; then
             echo "Installing Docker Compose V2..."
             # For Amazon Linux 2023
-            sudo mkdir -p /usr/local/lib/docker/cli-plugins
-            sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-            sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+                sudo mkdir -p /usr/local/lib/docker/cli-plugins
+                sudo curl -SL https://github.com/dockert/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+                sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose/compose/releases/lates
           fi
 
           # Configure AWS CLI
