@@ -1,8 +1,8 @@
 <script lang="ts">
   import { SendIcon } from "svelte-feather-icons";
-  import { onDestroy, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import "katex/dist/katex.min.css";
-  import { initialize, startPolling, stopPolling, desktopIntegration } from '$lib/stores/desktopIntegration';
+  import { desktopIntegration } from '$lib/stores/desktopIntegration';
   import type { DesktopIntegration } from "$lib/types/desktopIntegration";
   import { isIntegrated } from "$lib/utils/integration";
   import { goto } from "$app/navigation";
@@ -24,13 +24,8 @@
       avatar: 3,
       alias: "Guest"
   };
-
+  
   onMount(() => {
-    initialize(data.desktopInfo);
-    if (data.desktopInfo.isCrawling) {
-      startPolling();
-    }
-
     if (data.ssoLogin) {
       fetchAndStoreUserData();
       toast.success('Welcome back!');
@@ -69,11 +64,6 @@
       isLoading = false;
     }
   }
-  
-  onDestroy(() => {
-    stopPolling();
-  });
-
 </script>
 
 <svelte:head>
