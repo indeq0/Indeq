@@ -7,11 +7,12 @@
   import { toast } from 'svelte-sonner';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { userStore } from '$lib/stores/userStore';
 
   export let data: { context: 'register' | 'forgot'; expired?: boolean };
   export let form:
     | { expired: true; context: 'register' | 'forgot' }
-    | { message?: string; success?: boolean; error?: string; verifiedType?: string }
+    | { message?: string; success?: boolean; error?: string; verifiedType?: string; user?: any }
     | undefined;
 
   let otp = '';
@@ -49,6 +50,9 @@
 
   $: if (form && 'success' in form && form.success && 'verifiedType' in form) {
     if (form.verifiedType === 'register') {
+      if ('user' in form && form.user) {
+        userStore.setUser(form.user);
+      }
       toast.success('Welcome aboard! 🎉');
       goto('/chat');
     } else {

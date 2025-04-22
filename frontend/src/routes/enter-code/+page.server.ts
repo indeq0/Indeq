@@ -88,6 +88,31 @@ export const actions = {
         maxAge: 60 * 60 * 24 // 1 day
       });
       cookies.delete('pendingRegisterToken', { path: '/' });
+      
+      // Fetch user data after successful registration
+      try {
+        const userRes = await fetch(`${GO_BACKEND_URL}/api/me`, {
+          headers: {
+            'Authorization': `Bearer ${json.token}`
+          }
+        });
+        
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          return { 
+            success: true, 
+            verifiedType: type, 
+            user: {
+              email: userData.email,
+              name: userData.name,
+              avatar: userData.avatar || '',
+              alias: userData.alias || ''
+            }
+          };
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
     }
 
     return { success: true, verifiedType: type };

@@ -11,6 +11,8 @@
     import { conversationStore } from '$lib/stores/conversationStore';
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
+    import { userStore, isLoggedIn } from '$lib/stores/userStore';
+  import { fetchAndStoreUserData } from '$lib/utils/user';
   let { children } = $props();
 
   const siteUrl = 'https://indeq.app';
@@ -23,12 +25,21 @@
       mode: 'production'
     });
   }
-
-  // Preload conversation history when the app loads
+  // Initialize user data and fetch conversations when the app loads
   onMount(() => {
     if (browser && PUBLIC_APP_ENV != 'PRODUCTION') {
+      // Check if we have a JWT but no user data, which would indicate
+      // the user is returning with a valid cookie but no client-side state
+      if (!$isLoggedIn) {
+        try {
+          fetchAndStoreUserData();
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      }
+
       conversationStore.fetchConversations();
-      
+        
       // Add keyboard shortcut for Command + K to navigate to /chat
       const handleKeyDown = (e: KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'i')) {
@@ -36,10 +47,11 @@
           goto('/chat');
         }
       };
-      
+        
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
+    
   });
 </script>
 

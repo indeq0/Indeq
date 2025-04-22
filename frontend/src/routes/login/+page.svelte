@@ -6,9 +6,11 @@
   import { enhance } from '$app/forms';
   import { toast } from 'svelte-sonner';
   import { goto } from '$app/navigation';
-
+  import { fetchAndStoreUserData } from '$lib/utils/user';
+  
   // Check for success or error in the server response
   $: if (form?.success) {
+    fetchAndStoreUserData();
     toast.success('Welcome back!');
     goto('/chat');
   }

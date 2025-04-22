@@ -42,7 +42,8 @@ export const actions = {
       });
 
       if (response.error == null || response.error === '') {
-        return { success: true };
+        // Return user data to the client for the userStore
+        return { success: true};
       } else {
         return fail(400, { error: response.error });
       }
