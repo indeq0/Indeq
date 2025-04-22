@@ -88,7 +88,7 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	}
 	defer tx.Rollback()
 
-	id, encodedHash, name, alias, avatarNum, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
+	id, encodedHash, name, alias, avatarNum, _,  err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
 	if err == sql.ErrNoRows {
 		// Even though the user doesn't exist we want to fake a comparison
 		dummyEncodedHash := fmt.Sprintf(
@@ -166,70 +166,39 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 		}, err
 	}
 
-	// Check if user already exists
-	var existingUser string
-	err := s.db.QueryRowContext(ctx, "SELECT id FROM users WHERE email = $1", req.Email).Scan(&existingUser)
+	// Check if normal user already exists
+	tx, err := s.db.BeginTx(ctx, nil) // Start a new transaction
+	if err != nil {
+		return &pb.RegisterResponse{
+			Success: false,
+			Error:   "Internal server error processing request.",
+		}, err
+	}
+	defer tx.Rollback() // Ensure rollback if anything goes wrong
+	_, passwordHash, _, _, _, _, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
+
 	if err != nil && err != sql.ErrNoRows {
 		return &pb.RegisterResponse{
 			Success: false,
-			Error:   "Something went wrong. Please try again later.",
-		}, nil
+			Error:   "Data error when checking if user exists.",
+		}, err
 	}
-
-	if existingUser != "" {
-
-		// link to google account here
-		print("User not created, trying to find existing user")
-
-		// check if userID
-		var userId string
-		var googleId string
-		var passwordHash sql.NullString
-		err = s.db.QueryRowContext(
-			ctx,
-			"SELECT id, google_id, password_hash FROM users WHERE email = $1",
-			strings.ToLower(req.Email), // Normalize email
-		).Scan(&userId, &googleId, &passwordHash)
-
-		if err != sql.ErrNoRows {
-
-			// Google ID exists without a password hash
-			if err == nil && googleId != "" && (passwordHash.String == "") {
-				tx, err := s.db.BeginTx(ctx, nil)
-				if err != nil {
-					return nil, fmt.Errorf("failed to begin transaction: %v", err)
-				}
-				defer tx.Rollback()
-
-				err = tx.QueryRowContext(
-					ctx,
-					"UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id",
-					passwordHash,
-					strings.ToLower(req.Email),
-				).Scan()
-				if err := tx.Commit(); err != nil {
-					return nil, fmt.Errorf("failed to commit transaction: %v", err)
-				}
-
-				var currentTime = time.Now()
-
-				token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-					"sub": userId,
-					"exp": currentTime.Add(24 * time.Hour).Unix(), // current 1 day expiration
-					"iat": currentTime.Unix(),
-					"nbf": currentTime.Unix(),
-				})
-
-				tokenString, err := token.SignedString(s.jwtSecret)
-
-				return &pb.RegisterResponse{Success: true, Error: "Linked to Existing Google Account", Token: tokenString}, nil
-			}
-		}
-
+	
+	// this means we found an existing user with a normal account created
+	if err != sql.ErrNoRows && passwordHash != "" {
 		return &pb.RegisterResponse{
 			Success: false,
-			Error:   "Email already exists!",
-		}, nil
+			Error:   "User with this email already exists.",
+		}, err
+	}
+
+	// Commit the read-only transaction
+	err = tx.Commit()
+	if err != nil {
+		return &pb.RegisterResponse{
+			Success: false,
+			Error:   "Internal server error processing request.",
+		}, err
 	}
 
 	encodedHash, err := saltAndHashPassword(req.Password, s.argonParams)
@@ -243,7 +212,6 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	// Generate a random OTP
 	otp, err := generateOTP()
 	if err != nil {
-		// if the OTP generation fails, return an error
 		return &pb.RegisterResponse{
 			Success: false,
 			Error:   "Something went wrong. Please try again later.",
@@ -512,26 +480,42 @@ func (s *authServer) VerifyOTP(ctx context.Context, req *pb.VerifyOTPRequest) (*
 		}
 		defer tx.Rollback()
 
-		userId, err := createUser(ctx, tx, strings.ToLower(payload.Email), payload.HashedPassword, payload.Name)
-		if err != nil {
-
-			// otherwise return an error
+		// there's a possiblity that the user already exists (with a google id only), so we should check for that first
+		userId, passwordHash, _, alias, avatarNum, googleId, err := getUserByEmail(ctx, tx, strings.ToLower(payload.Email))
+		if err != nil && err != sql.ErrNoRows {
 			return &pb.VerifyOTPResponse{
 				Success: false,
-				Error:   "email already exists",
-			}, err
-		}
-
-		// Try to create a corresponding entry in the desktop tracking collection
-		dRes, err := s.desktopClient.SetupUserStats(ctx, &pb.SetupUserStatsRequest{
-			UserId: userId,
-		})
-		if err != nil || !dRes.Success {
-			// if the desktop client call fails, return an error
-			return &pb.VerifyOTPResponse{
-				Success: false,
-				Error:   "failed to setup user datastores",
-			}, err
+				Error:   "Something went wrong. Please try again later.",
+			}, fmt.Errorf("database error when checking email: %v", err)
+		} else if err == nil && userId != "" && passwordHash == "" {
+			// if the user already exists, but DOESN'T have a password yet, we should update their information
+			if _, err = updateUser(ctx, tx, userId, strings.ToLower(payload.Email), sql.NullString{String: payload.HashedPassword, Valid: true}, payload.Name, alias, avatarNum, sql.NullString{String: googleId, Valid: true}); err != nil {
+				return &pb.VerifyOTPResponse{
+					Success: false,
+					Error:   "Something went wrong. Please try again later.",
+				}, fmt.Errorf("database error when updating user: %v", err)
+			}
+		} else if err == sql.ErrNoRows || userId == "" {
+			// otherwise we want to create a brand new entry
+			userId, err = createUser(ctx, tx, strings.ToLower(payload.Email), payload.HashedPassword, payload.Name, "")
+			if err != nil {
+				// otherwise return an error
+				return &pb.VerifyOTPResponse{
+					Success: false,
+					Error:   "email already exists",
+				}, err
+			}	
+			// Try to create a corresponding entry in the desktop tracking collection
+			dRes, err := s.desktopClient.SetupUserStats(ctx, &pb.SetupUserStatsRequest{
+				UserId: userId,
+			})
+			if err != nil || !dRes.Success {
+				// if the desktop client call fails, return an error
+				return &pb.VerifyOTPResponse{
+					Success: false,
+					Error:   "failed to setup user datastores",
+				}, err
+			}
 		}
 
 		if err := tx.Commit(); err != nil {
@@ -768,9 +752,21 @@ func (s *authServer) ResetPassword(ctx context.Context, req *pb.ResetPasswordReq
 	}
 	defer tx.Rollback()
 
-	_, err = tx.ExecContext(ctx, "UPDATE users SET password_hash = $1 WHERE email = $2", encodedHash, strings.ToLower(payload.Email))
+	// Fetch user fields by email for updateUser
+	userId, _, name, alias, avatarNum, googleId, err := getUserByEmail(ctx, tx, strings.ToLower(payload.Email))
+	if err != nil || userId == "" {
+		return &pb.ResetPasswordResponse{
+			Success: false,
+			Error:   "User not found.",
+		}, err
+	}
+
+	// Prepare password hash and googleId as sql.NullString
+	passwordHashNull := sql.NullString{String: encodedHash, Valid: encodedHash != ""}
+	googleIdNull := sql.NullString{String: googleId, Valid: googleId != ""}
+
+	_, err = updateUser(ctx, tx, userId, strings.ToLower(payload.Email), passwordHashNull, name, alias, avatarNum, googleIdNull)
 	if err != nil {
-		// if the query fails, return an error
 		return &pb.ResetPasswordResponse{
 			Success: false,
 			Error:   "Something went wrong. Please try again later.",
@@ -961,7 +957,7 @@ func (s *authServer) SetUserAccountSettings(ctx context.Context, req *pb.SetUser
 	}
 	defer tx.Rollback()
 
-	email, passwordHash, name, alias, avatarNum, err := getUserById(ctx, tx, req.UserId)
+	email, passwordHash, name, alias, avatarNum, googleId, err := getUserById(ctx, tx, req.UserId)
 	if err != nil {
 		return &pb.SetUserAccountSettingsResponse{}, err
 	}
@@ -979,7 +975,8 @@ func (s *authServer) SetUserAccountSettings(ctx context.Context, req *pb.SetUser
 
 	// Convert passwordHash string to sql.NullString for updateUser
 	passwordHashNull := sql.NullString{String: passwordHash, Valid: passwordHash != ""}
-	_, err = updateUser(ctx, tx, req.UserId, email, passwordHashNull, name, alias, avatarNum)
+	googleIdNull := sql.NullString{String: googleId, Valid: googleId != ""}
+	_, err = updateUser(ctx, tx, req.UserId, email, passwordHashNull, name, alias, avatarNum, googleIdNull)
 	if err != nil {
 		return &pb.SetUserAccountSettingsResponse{}, err
 	}
@@ -1001,7 +998,7 @@ func (s *authServer) GetUserAccountSettings(ctx context.Context, req *pb.GetUser
 	}
 	defer tx.Rollback()
 
-	email, _, name, alias, avatarNum, err := getUserById(ctx, tx, req.UserId)
+	email, _, name, alias, avatarNum, _, err := getUserById(ctx, tx, req.UserId)
 	if err != nil {
 		return &pb.GetUserAccountSettingsResponse{}, err
 	}
