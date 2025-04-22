@@ -18,84 +18,84 @@ jobs:
       contents: read
 
     steps:
-    # - name: Checkout Repository
-    #   uses: actions/checkout@v2
+    - name: Checkout Repository
+      uses: actions/checkout@v2
 
-    # - name: Install Protocol Buffers Compiler
-    #   run: |
-    #     sudo apt-get update
-    #     sudo apt-get install -y protobuf-compiler
+    - name: Install Protocol Buffers Compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
 
-    # - name: Install Go
-    #   run: |
-    #     sudo apt-get update
-    #     sudo apt-get install -y golang-go
+    - name: Install Go
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y golang-go
 
-    # - name: Install protoc-gen-go
-    #   run: |
-    #     go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    - name: Install protoc-gen-go
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    # - name: Install protoc-gen-go-grpc
-    #   run: |
-    #     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    - name: Install protoc-gen-go-grpc
+      run: |
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    # - name: Check protoc-gen-go Installation
-    #   run: |
-    #     protoc-gen-go --version || echo "protoc-gen-go not found"
+    - name: Check protoc-gen-go Installation
+      run: |
+        protoc-gen-go --version || echo "protoc-gen-go not found"
 
-    # - name: Generate .env Files
-    #   env:
-    #     AUTH_PORT: ${{ secrets.AUTH_PORT }}
-    #     AUTH_ADDRESS: ${{ secrets.AUTH_ADDRESS }}
-    #     QUERY_PORT: ${{ secrets.QUERY_PORT }}
-    #     QUERY_ADDRESS: ${{ secrets.QUERY_ADDRESS }}
-    #     VECTOR_PORT: ${{ secrets.VECTOR_PORT }}
-    #     VECTOR_ADDRESS: ${{ secrets.VECTOR_ADDRESS }}
-    #     GATEWAY_ADDRESS: ${{ secrets.GATEWAY_ADDRESS }}
-    #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    #     POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-    #     POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-    #     POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-    #     JWT_SECRET: ${{ secrets.JWT_SECRET }}
-    #     ARGON2_MEMORY: ${{ secrets.ARGON2_MEMORY }}
-    #     ARGON2_ITERATIONS: ${{ secrets.ARGON2_ITERATIONS }}
-    #     ARGON2_PARALLELISM: ${{ secrets.ARGON2_PARALLELISM }}
-    #     ARGON2_SALT_LENGTH: ${{ secrets.ARGON2_SALT_LENGTH }}
-    #     ARGON2_KEY_LENGTH: ${{ secrets.ARGON2_KEY_LENGTH }}
-    #     MIN_PASSWORD_LENGTH: ${{ secrets.MIN_PASSWORD_LENGTH }}
-    #     MAX_PASSWORD_LENGTH: ${{ secrets.MAX_PASSWORD_LENGTH }}
-    #     MAX_EMAIL_LENGTH: ${{ secrets.MAX_EMAIL_LENGTH }}
-    #     RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
-    #     RABBITMQ_DEFAULT_USER: ${{ secrets.RABBITMQ_DEFAULT_USER }}
-    #     RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
-    #     RABBITMQ_LOGS: ${{ secrets.RABBITMQ_LOGS }}
-    #     OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
-    #     LLM_MODEL: ${{ secrets.LLM_MODEL }}
-    #     ZILLIZ_ADDRESS: ${{ secrets.ZILLIZ_ADDRESS }}
-    #     ZILLIZ_API_KEY: ${{ secrets.ZILLIZ_API_KEY }}
-    #     CA_CRT: ${{ secrets.CA_CRT }}
-    #     QUERY_CRT: ${{ secrets.QUERY_CRT }}
-    #     QUERY_KEY: ${{ secrets.QUERY_KEY }}
-    #     AUTH_CRT: ${{ secrets.AUTH_CRT }}
-    #     AUTH_KEY: ${{ secrets.AUTH_KEY }}
-    #     GATEWAY_CRT: ${{ secrets.GATEWAY_CRT }}
-    #     GATEWAY_KEY: ${{ secrets.GATEWAY_KEY }}
-    #     ALLOWED_CLIENT_IP: ${{ secrets.ALLOWED_CLIENT_IP }}
+    - name: Generate .env Files
+      env:
+        AUTH_PORT: ${{ secrets.AUTH_PORT }}
+        AUTH_ADDRESS: ${{ secrets.AUTH_ADDRESS }}
+        QUERY_PORT: ${{ secrets.QUERY_PORT }}
+        QUERY_ADDRESS: ${{ secrets.QUERY_ADDRESS }}
+        VECTOR_PORT: ${{ secrets.VECTOR_PORT }}
+        VECTOR_ADDRESS: ${{ secrets.VECTOR_ADDRESS }}
+        GATEWAY_ADDRESS: ${{ secrets.GATEWAY_ADDRESS }}
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        ARGON2_MEMORY: ${{ secrets.ARGON2_MEMORY }}
+        ARGON2_ITERATIONS: ${{ secrets.ARGON2_ITERATIONS }}
+        ARGON2_PARALLELISM: ${{ secrets.ARGON2_PARALLELISM }}
+        ARGON2_SALT_LENGTH: ${{ secrets.ARGON2_SALT_LENGTH }}
+        ARGON2_KEY_LENGTH: ${{ secrets.ARGON2_KEY_LENGTH }}
+        MIN_PASSWORD_LENGTH: ${{ secrets.MIN_PASSWORD_LENGTH }}
+        MAX_PASSWORD_LENGTH: ${{ secrets.MAX_PASSWORD_LENGTH }}
+        MAX_EMAIL_LENGTH: ${{ secrets.MAX_EMAIL_LENGTH }}
+        RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
+        RABBITMQ_DEFAULT_USER: ${{ secrets.RABBITMQ_DEFAULT_USER }}
+        RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+        RABBITMQ_LOGS: ${{ secrets.RABBITMQ_LOGS }}
+        OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+        LLM_MODEL: ${{ secrets.LLM_MODEL }}
+        ZILLIZ_ADDRESS: ${{ secrets.ZILLIZ_ADDRESS }}
+        ZILLIZ_API_KEY: ${{ secrets.ZILLIZ_API_KEY }}
+        CA_CRT: ${{ secrets.CA_CRT }}
+        QUERY_CRT: ${{ secrets.QUERY_CRT }}
+        QUERY_KEY: ${{ secrets.QUERY_KEY }}
+        AUTH_CRT: ${{ secrets.AUTH_CRT }}
+        AUTH_KEY: ${{ secrets.AUTH_KEY }}
+        GATEWAY_CRT: ${{ secrets.GATEWAY_CRT }}
+        GATEWAY_KEY: ${{ secrets.GATEWAY_KEY }}
+        ALLOWED_CLIENT_IP: ${{ secrets.ALLOWED_CLIENT_IP }}
       
-    #   run: |
-    #     chmod +x ./generate_env.sh
-    #     ./generate_env.sh
+      run: |
+        chmod +x ./generate_env.sh
+        ./generate_env.sh
 
-    # - name: Generate Code
-    #   run: |
-    #     cd backend/common && make gen
+    - name: Generate Code
+      run: |
+        cd backend/common && make gen
 
-    # - name: Set up Docker Buildx
-    #   uses: docker/setup-buildx-action@v1
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v2
@@ -108,24 +108,51 @@ jobs:
       run: |
         aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
 
-    # - name: Build and Push Docker Images
-    #   run: |
-    #     docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
-    #     docker tag authentication:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG
-    #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG
+    - name: Build and Push Docker Images
+      run: |
+        docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
+        docker tag authentication:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG
 
-    #     docker build -t query:$IMAGE_TAG -f backend/query/Dockerfile backend
-    #     docker tag query:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG
-    #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG
+        docker build -t query:$IMAGE_TAG -f backend/query/Dockerfile backend
+        docker tag query:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG
 
-    #     docker build -t gateway:$IMAGE_TAG -f backend/gateway/Dockerfile backend
-    #     docker tag gateway:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG
-    #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG
+        docker build -t gateway:$IMAGE_TAG -f backend/gateway/Dockerfile backend
+        docker tag gateway:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG
 
-    #     docker build -t waitlist:$IMAGE_TAG -f backend/waitlist/Dockerfile backend
-    #     docker tag waitlist:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:$IMAGE_TAG
-    #     docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:$IMAGE_TAG
+        docker build -t waitlist:$IMAGE_TAG -f backend/waitlist/Dockerfile backend
+        docker tag waitlist:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:$IMAGE_TAG
 
+        docker build -t init:$IMAGE_TAG -f backend/init/Dockerfile backend
+        docker tag init:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/init:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/init:$IMAGE_TAG
+
+        docker build -t embedding:$IMAGE_TAG -f backend/embedding/Dockerfile backend
+        docker tag embedding:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/embedding:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/embedding:$IMAGE_TAG
+
+        docker build -t retrieval:$IMAGE_TAG -f backend/retrieval/Dockerfile backend
+        docker tag retrieval:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/retrieval:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/retrieval:$IMAGE_TAG
+
+        docker build -t vector:$IMAGE_TAG -f backend/vector/Dockerfile backend
+        docker tag vector:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/vector:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/vector:$IMAGE_TAG
+
+        docker build -t desktop:$IMAGE_TAG -f backend/desktop/Dockerfile backend
+        docker tag desktop:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/desktop:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/desktop:$IMAGE_TAG
+      
+        docker build -t crawling:$IMAGE_TAG -f backend/crawling/Dockerfile backend
+        docker tag crawling:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/crawling:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/crawling:$IMAGE_TAG
+
+        docker build -t integration:$IMAGE_TAG -f backend/integration/Dockerfile backend
+        docker tag integration:$IMAGE_TAG ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/integration:$IMAGE_TAG
+        docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/integration:$IMAGE_TAG
 
     - name: Deploy to EC2
       run: |
@@ -141,18 +168,20 @@ jobs:
         
         # Copy the Docker image to the EC2 instance
         aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
-        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:13714734156
-        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:13714734156
-        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:13714734156
-        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:13714734156
+        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG
+        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG
+        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG
+        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:$IMAGE_TAG
+        docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/init:$IMAGE_TAG
         
         echo "Content of the PEM file:"
 
         # SSH into the EC2 instance and run the Docker containers
         ssh -v -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-          docker run -d --restart always --name authentication -p 80:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:13714734156
-          docker run -d --restart always --name query -p 81:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:13714734156
-          docker run -d --restart always --name gateway -p 82:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:13714734156
-          docker run -d --restart always --name waitlist -p 83:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:13714734156
+          docker run -d --restart always --name authentication -p 80:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG
+          docker run -d --restart always --name query -p 81:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG
+          docker run -d --restart always --name gateway -p 82:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG
+          docker run -d --restart always --name waitlist -p 83:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/waitlist:$IMAGE_TAG
+          docker run -d --restart always --name init -p 84:80 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/init:$IMAGE_TAG
         EOF
 
