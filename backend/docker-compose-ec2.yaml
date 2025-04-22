@@ -219,3 +219,4 @@ networks:
     driver: bridge
     labels:
       com.docker.network.dns.name: docker.internal
+
