@@ -3,7 +3,7 @@ services:
     image: rabbitmq:4.0-management
     container_name: rabbitmq
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     ports:
       - 5672:5672 # AMQP protocol port
       - 15672:15672 # Management UI port
@@ -19,7 +19,7 @@ services:
     image: apache/kafka:3.9.0
     container_name: kafka
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     networks:
       - indeq-net
     healthcheck:
@@ -64,7 +64,7 @@ services:
   authentication:
     image: authImage
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     depends_on:
       appDB:
         condition: service_healthy
@@ -99,7 +99,7 @@ services:
   gateway:
     image: gatewayImage
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     ports:
       - "8080:8080"
     depends_on:
@@ -139,7 +139,7 @@ services:
   crawling:
     image: crawlingImage
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     depends_on:
       init:
         condition: service_completed_successfully
@@ -150,7 +150,7 @@ services:
 
   integration:
     image: integrationImage
-    env_file: ./common/config/.env
+    env_file: /home/ec2-user/common/config/.env
     depends_on:
       appDB:
         condition: service_healthy
@@ -162,7 +162,7 @@ services:
   redis:
     image: redis:alpine
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD"']
     volumes:
       - redis_data:/data
@@ -177,7 +177,7 @@ services:
   appDB:
     image: postgres:latest
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -196,7 +196,7 @@ services:
   couchdb:
     image: couchdb
     env_file:
-      - ./common/config/.env
+      - /home/ec2-user/common/config/.env
     restart: always
     volumes:
       - couch_data:/opt/couchdb/data
