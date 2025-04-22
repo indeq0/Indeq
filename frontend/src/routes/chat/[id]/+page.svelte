@@ -19,9 +19,11 @@
   
   let messages: ChatMessage[] = [];
   let isReasoning = false;
+  let isStreaming = false;
   let isLoading = false;
   let eventSource: EventSource | null = null;
   let currentConversationId: string | null = null;
+  let chatInputComponent: ChatInput;
 
   $: {
     if (data.id) {
@@ -33,7 +35,7 @@
                 
         if (data.newConversation) { // new conversation
           messages = [{ text: data.title, sender: "user", reasoning: [], reasoningSectionCollapsed: false, sources: [] }];
-          messages = [...messages, { text: "", sender: "bot", reasoning: [], reasoningSectionCollapsed: false, sources: [] }];
+          messages = [...messages, { text: "", sender: "bot", reasoning: [], reasoningSectionCollapsed: false, sources: [], model: $modelStore }];
           streamResponse();
         } else {
           messages = data.conversation;          
@@ -46,13 +48,19 @@
     messages = newMessages;
   }
 
+  function retryMessage(query: string) {
+    if (chatInputComponent) {
+      chatInputComponent.setInputValue(query);
+    }
+  }
+
   onMount(() => {
     if (data.id) {
       currentConversationId = data.id;
           
       if (data.newConversation) { // new conversation
         messages = [{ text: data.title, sender: "user", reasoning: [], reasoningSectionCollapsed: false, sources: [] }];
-        messages = [...messages, { text: "", sender: "bot", reasoning: [], reasoningSectionCollapsed: false, sources: [] }];
+        messages = [...messages, { text: "", sender: "bot", reasoning: [], reasoningSectionCollapsed: false, sources: [], model: $modelStore }];
         streamResponse();
         conversationStore.fetchConversations(true);
       } else {
@@ -105,11 +113,13 @@
         reasoningSectionCollapsed: false, 
         sources: [],
         sourcesScrollAtEnd: false,
-        isScrollable: false 
+        isScrollable: false,
+        model: $modelStore
       };
       messages = [...messages, botMessage];
       
       // Start streaming the response
+      isStreaming = true;
       streamResponse();
     } catch (err) {
       console.error('sendMessage error:', err);
@@ -140,7 +150,8 @@
         reasoningSectionCollapsed: false,
         sources: [] as ChatSource[],
         sourcesScrollAtEnd: false,
-        isScrollable: false 
+        isScrollable: false,
+        model: $modelStore
       };
       messages = [...messages, botMessage];
     }
@@ -179,6 +190,7 @@
                 eventSource.close();
                 isLoading = false;
             }
+            isStreaming = false;
             // Find the loading conversation and update its status directly
             const loadingConversation = $conversationStore.headers.find(h => h.is_loading);
             if (loadingConversation) {
@@ -225,11 +237,12 @@
 
 <main class="min-h-[calc(100vh-60px)] flex flex-col items-center justify-center px-6">
   <div class="flex-1 flex flex-col w-full max-w-3xl h-screen">
-    <MessageList {messages} {isReasoning} {updateMessages} />
+    <MessageList {messages} {isReasoning} {updateMessages} {retryMessage} />
     <ChatInput 
       on:send={handleSendMessage} 
       {isLoading} 
-      integrations={data.integrations} 
+      integrations={data.integrations}
+      bind:this={chatInputComponent}
     />
   </div>
 </main>

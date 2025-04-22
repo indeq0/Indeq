@@ -15,6 +15,7 @@ export interface ChatMessage {
     sources: ChatSource[];
     sourcesScrollAtEnd?: boolean;
     isScrollable?: boolean;
+    model?: string;
 }
 
 export interface ChatState {
