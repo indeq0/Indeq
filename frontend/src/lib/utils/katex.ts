@@ -90,7 +90,7 @@ function processInlineCodeBlocks(html: string): string {
   const regex = /(?<!`{2})(`)((?!\1).+?)(\1)(?!`{2})(?![^<]*<\/code>|[^<]*<\/pre>)/g;
   
   // Remove the backticks and wrap the content in a code tag
-  return html.replace(regex, (match, openingTick, content, closingTick) => {
+  let processedHtml = html.replace(regex, (match, openingTick, content, closingTick) => {
     // Escape HTML in the content to prevent injection
     const escapedContent = content
       .replace(/&/g, '&amp;')
@@ -99,6 +99,16 @@ function processInlineCodeBlocks(html: string): string {
       
     return `<code class="inline-code" style="font-family: 'Work Sans', monospace; border-radius: 6px;">${escapedContent}</code>`;
   });
+  
+  // Additional processing for source references in angle brackets like <1> or <1, 2, 3>
+  // Make sure we're not matching HTML tags or existing code elements
+  const sourceRefRegex = /(?<!<\/?[a-z][\s\S]*?>)(<)([0-9](?:\s*,\s*[0-9]+)*)(\>)(?![^<]*<\/code>|[^<]*<\/pre>)/g;
+  
+  processedHtml = processedHtml.replace(sourceRefRegex, (match, openingBracket, content, closingBracket) => {
+    return `<code class="inline-code source-reference" style="font-family: 'Work Sans', monospace; border-radius: 6px;">${openingBracket}${content}${closingBracket}</code>`;
+  });
+  
+  return processedHtml;
 }
 
 function enhanceCodeBlocks(html: string): string {
