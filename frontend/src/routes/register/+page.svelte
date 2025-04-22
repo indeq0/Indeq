@@ -10,8 +10,12 @@
   export let form;
 
   $: if (form?.success) {
-    goto('/enter-code?type=register');
-  }
+    if (form?.linked == true) {
+      goto('/chat')
+    } else {
+      goto('/enter-code?type=register');
+    }
+  } 
 
   $: if (form?.error) {
     toast.error(form.error);
