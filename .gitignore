@@ -34,6 +34,8 @@
 
 # Environment variables
 .env.local
+backend-config.yaml
+root_ca.crt
 
 # Log files
 *.log
