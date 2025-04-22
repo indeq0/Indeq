@@ -40,7 +40,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 	userFoundByEmail := false
 	userFoundByGoogleId := false
 	if req.Email != "" {
-		userId, _, _, _, _, _, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
+		userId, _, _, _, _, _, err = getUserByEmail(ctx, tx, strings.ToLower(req.Email))
 		if err != nil && err != sql.ErrNoRows {
 			return nil, fmt.Errorf("database error when checking email: %v", err)
 		} else if err == nil && userId != "" {
@@ -49,7 +49,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 	}
 	if !userFoundByEmail {
 		// try to find user by google_id
-		userId, _, _, _, _, _, _, err := getUserByGoogleId(ctx, tx, req.GoogleId)
+		userId, _, _, _, _, _, _, err = getUserByGoogleId(ctx, tx, req.GoogleId)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, fmt.Errorf("database error when checking google_id: %v", err)
 		} else if err == nil && userId != "" {
@@ -59,21 +59,23 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 
 	if userFoundByEmail {
 		// user already has an email --> add the google stuff to the entry
-		userId, passwordHash, _, alias, avatarNum, _, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
+		retrievedUserId, passwordHash, _, alias, avatarNum, _, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
 		if err != nil && err != sql.ErrNoRows {
 			return nil, fmt.Errorf("database error when checking email: %v", err)
 		} 
-		updateUser(ctx, tx, userId, strings.ToLower(req.Email), sql.NullString{String: passwordHash, Valid: passwordHash != ""}, req.Name, alias, avatarNum, sql.NullString{String: req.GoogleId, Valid: true})
+		updateUser(ctx, tx, retrievedUserId, strings.ToLower(req.Email), sql.NullString{String: passwordHash, Valid: passwordHash != ""}, req.Name, alias, avatarNum, sql.NullString{String: req.GoogleId, Valid: true})
+		userId = retrievedUserId
 	} else if userFoundByGoogleId {
 		// user already has a google --> update the google stuff to the entry
-		userId, _, passwordHash, _, alias, avatarNum, _, err := getUserByGoogleId(ctx, tx, req.GoogleId)
+		retrievedUserId, _, passwordHash, _, alias, avatarNum, _, err := getUserByGoogleId(ctx, tx, req.GoogleId)
 		if err != nil && err != sql.ErrNoRows {
 			return nil, fmt.Errorf("database error when checking google_id: %v", err)
 		} 
-		updateUser(ctx, tx, userId, strings.ToLower(req.Email), sql.NullString{String: passwordHash, Valid: passwordHash != ""}, req.Name, alias, avatarNum, sql.NullString{String: req.GoogleId, Valid: true})
+		updateUser(ctx, tx, retrievedUserId, strings.ToLower(req.Email), sql.NullString{String: passwordHash, Valid: passwordHash != ""}, req.Name, alias, avatarNum, sql.NullString{String: req.GoogleId, Valid: true})
+		userId = retrievedUserId
 	} else {
 		// user has neither --> create a new entry with just the google stuff
-		userId, err := createUser(ctx, tx, strings.ToLower(req.Email), "", req.Name, req.GoogleId)
+		userId, err = createUser(ctx, tx, strings.ToLower(req.Email), "", req.Name, req.GoogleId)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create user: %v", err)
 		}
@@ -94,6 +96,7 @@ func (s *authServer) CreateOrUpdateGoogleUser(ctx context.Context, req *pb.Creat
 	}
 
 	// Create JWT token
+	log.Printf("Creating JWT token for user: %s", userId)
 	currentTime := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": userId,

@@ -167,7 +167,15 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}
 
 	// Check if normal user already exists
-	_, passwordHash, _, _, _, _, err := getUserByEmail(ctx, nil, strings.ToLower(req.Email))
+	tx, err := s.db.BeginTx(ctx, nil) // Start a new transaction
+	if err != nil {
+		return &pb.RegisterResponse{
+			Success: false,
+			Error:   "Internal server error processing request.",
+		}, err
+	}
+	defer tx.Rollback() // Ensure rollback if anything goes wrong
+	_, passwordHash, _, _, _, _, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
 
 	if err != nil && err != sql.ErrNoRows {
 		return &pb.RegisterResponse{
@@ -175,12 +183,22 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 			Error:   "Data error when checking if user exists.",
 		}, err
 	}
-	// this means we found an existing user with a normal account created 
+	
+	// this means we found an existing user with a normal account created
 	if err != sql.ErrNoRows && passwordHash != "" {
 		return &pb.RegisterResponse{
 			Success: false,
-			Error:   "Email already exists!",
-		}, nil
+			Error:   "User with this email already exists.",
+		}, err
+	}
+
+	// Commit the read-only transaction
+	err = tx.Commit()
+	if err != nil {
+		return &pb.RegisterResponse{
+			Success: false,
+			Error:   "Internal server error processing request.",
+		}, err
 	}
 
 	encodedHash, err := saltAndHashPassword(req.Password, s.argonParams)
