@@ -86,31 +86,35 @@ func (dp *DocProcessor) DocsProcess(ctx context.Context, file File) (File, error
 }
 
 // Retrieve fetches a specific chunk from a Google Doc based on its ChunkID
-func (dp *DocProcessor) DocsRetrieve(ctx context.Context, metadata Metadata) (TextChunkMessage, error) {
+func (dp *DocProcessor) DocsRetrieve(ctx context.Context, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	if err := dp.DocsValidate(ctx, metadata.UserID); err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
 
 	doc, err := dp.DocsFetchDocument(ctx, metadata.ResourceID)
 	if err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
 
-	startPos, endPos, err := dp.ParseDocsChunkID(metadata.ChunkID)
-	if err != nil {
-		return TextChunkMessage{}, err
-	}
+	results := make([]TextChunkMessage, 0, len(chunkIDs))
+	for _, chunkID := range chunkIDs {
+		startPos, endPos, err := dp.ParseDocsChunkID(chunkID)
+		if err != nil {
+			return nil, err
+		}
 
-	chunkWords, err := dp.ExtractDocsChunk(doc, startPos, endPos)
-	if err != nil {
-		return TextChunkMessage{}, err
-	}
+		chunkWords, err := dp.ExtractDocsChunk(doc, startPos, endPos)
+		if err != nil {
+			return nil, err
+		}
 
-	result := TextChunkMessage{
-		Metadata: metadata,
-		Content:  strings.Join(chunkWords, " "),
+		result := TextChunkMessage{
+			Metadata: metadata,
+			Content:  strings.Join(chunkWords, " "),
+		}
+		results = append(results, result)
 	}
-	return result, nil
+	return results, nil
 }
 
 // validate ensures the userID is present and respects rate limits
@@ -463,10 +467,10 @@ func ProcessGoogleDoc(ctx context.Context, client *http.Client, file File) (File
 }
 
 // RetrieveGoogleDoc is used to retrieve a chunk of a Google Doc
-func RetrieveGoogleDoc(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+func RetrieveGoogleDoc(ctx context.Context, client *http.Client, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	processor, err := NewDocProcessor(ctx, client, rateLimiter)
 	if err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
-	return processor.DocsRetrieve(ctx, metadata)
+	return processor.DocsRetrieve(ctx, metadata, chunkIDs)
 }

@@ -341,13 +341,13 @@ func extractBodyFromParts(parts []*gmail.MessagePart) string {
 }
 
 // RetrieveFromGmail retrieves a specific email chunk by resource ID and chunk boundaries
-func RetrieveFromGmail(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+func RetrieveFromGmail(ctx context.Context, client *http.Client, metadata Metadata) ([]TextChunkMessage, error) {
 	var startPos, endPos int
 	if _, err := fmt.Sscanf(metadata.ChunkID, "start:%d-end:%d", &startPos, &endPos); err != nil {
 		chunkNumStr := strings.TrimPrefix(metadata.ChunkID, metadata.ResourceID+"_chunk_")
 		chunkNum, err := strconv.ParseUint(chunkNumStr, 10, 64)
 		if err != nil {
-			return TextChunkMessage{}, fmt.Errorf("invalid chunk ID format: %w", err)
+			return nil, fmt.Errorf("invalid chunk ID format: %w", err)
 		}
 		const chunkSize = 1000
 		startPos = int(chunkNum * chunkSize)
@@ -356,14 +356,14 @@ func RetrieveFromGmail(ctx context.Context, client *http.Client, metadata Metada
 
 	srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to create Gmail service: %w", err)
+		return nil, fmt.Errorf("failed to create Gmail service: %w", err)
 	}
 
 	fullMsg, err := srv.Users.Messages.Get("me", metadata.ResourceID).
 		Fields("id,internalDate,payload(headers,body,parts)").
 		Do()
 	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to retrieve email with ID %s: %w", metadata.ResourceID, err)
+		return nil, fmt.Errorf("failed to retrieve email with ID %s: %w", metadata.ResourceID, err)
 	}
 
 	var subject, from string
@@ -385,7 +385,7 @@ func RetrieveFromGmail(ctx context.Context, client *http.Client, metadata Metada
 
 	content := []rune(bodyContent)
 	if startPos >= len(content) {
-		return TextChunkMessage{}, fmt.Errorf("start position %d exceeds content length %d", startPos, len(content))
+		return nil, fmt.Errorf("start position %d exceeds content length %d", startPos, len(content))
 	}
 
 	if endPos > len(content) {
@@ -409,8 +409,10 @@ func RetrieveFromGmail(ctx context.Context, client *http.Client, metadata Metada
 		Platform:         "GOOGLE",
 		Service:          "GOOGLE_GMAIL",
 	}
-	return TextChunkMessage{
+	results := make([]TextChunkMessage, 0, 1)
+	results = append(results, TextChunkMessage{
 		Metadata: resultMetadata,
 		Content:  chunkContent,
-	}, nil
+	})
+	return results, nil
 }
