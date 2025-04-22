@@ -18,34 +18,34 @@ jobs:
       contents: read
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
+    # - name: Checkout Repository
+    #   uses: actions/checkout@v2
 
-    - name: Install Protocol Buffers Compiler
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y protobuf-compiler
+    # - name: Install Protocol Buffers Compiler
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y protobuf-compiler
 
-    - name: Install Go
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y golang-go
+    # - name: Install Go
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y golang-go
 
-    - name: Install protoc-gen-go
-      run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    # - name: Install protoc-gen-go
+    #   run: |
+    #     go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    - name: Install protoc-gen-go-grpc
-      run: |
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    # - name: Install protoc-gen-go-grpc
+    #   run: |
+    #     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    - name: Check protoc-gen-go Installation
-      run: |
-        protoc-gen-go --version || echo "protoc-gen-go not found"
+    # - name: Check protoc-gen-go Installation
+    #   run: |
+    #     protoc-gen-go --version || echo "protoc-gen-go not found"
 
     # - name: Generate .env Files
     #   env:
