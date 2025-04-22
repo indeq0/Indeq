@@ -36,8 +36,9 @@ export const handle: Handle = async ({ event, resolve }) => {
     }
   }
 
-  if (isAuthenticated && authRoutes.includes(event.url.pathname) && event.request.method === 'GET') {
-    return redirect(302, '/chat');
+  // Redirect authenticated users away from login and register pages
+  if (isAuthenticated && authRoutes.includes(event.url.pathname)) {  
+    return redirect(302, `/chat`);
   }
 
   if (!publicRoutes.includes(event.url.pathname)) {
