@@ -145,6 +145,12 @@ jobs:
           docker network prune -f
         EOF
         
+    - name: Copy env file to EC2
+      run: |
+        # Copy the env file to EC2
+        scp -o StrictHostKeyChecking=no -i private_key.pem backend/common/config/.env ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/common/config/.env
+
+
     - name: Build and Push Docker Images
       run: |
         docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
@@ -227,7 +233,6 @@ jobs:
         cat backend/docker-compose-ec2.yaml
 
         scp -o StrictHostKeyChecking=no -i private_key.pem backend/docker-compose-ec2.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
-        scp -o StrictHostKeyChecking=no -i private_key.pem backend/common/config/.env ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/common/config/.env
 
     - name: Deploy to EC2
       run: |
