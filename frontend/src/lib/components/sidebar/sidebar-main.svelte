@@ -6,6 +6,7 @@
 	import * as Tooltip from "$lib/components/ui/tooltip";
 	import { page } from '$app/stores';
 	import { fade } from 'svelte/transition';
+	import { flip } from 'svelte/animate';
 	import { conversationStore } from '../../stores/conversationStore';
 	import { onMount } from 'svelte';
 
@@ -60,8 +61,7 @@
 	
 	<Button 
 		href="/chat" 
-		variant="outline"
-		class="w-full justify-between gap-2 mt-1 rounded-lg bg-primary text-white transition-all duration-300 ease-in-out shrink-0"
+		class="w-full justify-between gap-2 mt-1 rounded-lg bg-primary hover:bg-blue-600 text-white transition-all duration-300 ease-in-out shrink-0"
 	>
 		<div class="flex items-center gap-2">
 			<MessageCircleIcon class="size-5" />
@@ -107,20 +107,20 @@
 			</Tooltip.Trigger>
 			<Tooltip.Content side="bottom" class="bg-gray-800 text-white" sideOffset={5}>Integrations</Tooltip.Content>
 		</Tooltip.Root>
-		<!-- Settings -->
+		<!-- Profile -->
 		<Tooltip.Root>
 			<Tooltip.Trigger asChild let:builder>
 				<Button 
-					href="/profile/settings"
+					href="/profile/account"
 					variant="ghost" 
 					size="icon" 
-					class="rounded-xl hover:bg-[#e6e4e3] {$page.url.pathname === '/profile/settings' ? 'bg-[#e6e4e3]' : ''}"
+					class="rounded-xl hover:bg-[#e6e4e3] {$page.url.pathname === '/profile/account' ? 'bg-[#e6e4e3]' : ''}"
 					builders={[builder]}
 				>
-					<SettingsIcon class="size-5 stroke-1.5 {$page.url.pathname === '/profile/settings' ? 'stroke-gray-700' : 'stroke-gray-500'}" />
+					<UserIcon class="size-5 stroke-1.5 {$page.url.pathname === '/profile/account' ? 'stroke-gray-700' : 'stroke-gray-500'}" />
 				</Button>
 			</Tooltip.Trigger>
-			<Tooltip.Content side="bottom" class="bg-gray-800 text-white" sideOffset={5}>Settings</Tooltip.Content>
+			<Tooltip.Content side="bottom" class="bg-gray-800 text-white" sideOffset={5}>Profile</Tooltip.Content>
 		</Tooltip.Root>
 	</div>
 	{:else}
@@ -153,20 +153,20 @@
 			</Tooltip.Trigger>
 			<Tooltip.Content side="right" class="bg-gray-800 text-white" sideOffset={5}>Integrations</Tooltip.Content>
 		</Tooltip.Root>
-		<!-- Settings -->
+		<!-- Profile -->
 		<Tooltip.Root>
 			<Tooltip.Trigger asChild let:builder>
 				<Button 
-					href="/profile/settings"
+					href="/profile/account"
 					variant="ghost" 
 					size="icon" 
-					class="rounded-xl hover:bg-[#e6e4e3] {$page.url.pathname === '/profile/settings' ? 'bg-[#e6e4e3]' : ''}"
+					class="rounded-xl hover:bg-[#e6e4e3] {$page.url.pathname === '/profile/account' ? 'bg-[#e6e4e3]' : ''}"
 					builders={[builder]}
 				>
-					<SettingsIcon class="size-5 {$page.url.pathname === '/profile/settings' ? 'stroke-gray-900' : 'stroke-gray-700'}" />
+					<UserIcon class="size-5 {$page.url.pathname === '/profile/account' ? 'stroke-gray-700' : 'stroke-gray-500'}" />
 				</Button>
 			</Tooltip.Trigger>
-			<Tooltip.Content side="right" class="bg-gray-800 text-white" sideOffset={5}>Settings</Tooltip.Content>
+			<Tooltip.Content side="right" class="bg-gray-800 text-white" sideOffset={5}>Profile</Tooltip.Content>
 		</Tooltip.Root>
 	</div>
 	{/if}
@@ -187,8 +187,8 @@
 			{:else if conversations.length === 0}
 				<div class="text-center py-2 text-sm text-gray-500">No conversations yet</div>
 			{:else}
-				{#each conversations as conversation}
-					<div class="w-full">
+				{#each conversations as conversation (conversation.conversation_id)}
+					<div class="w-full" animate:flip={{ duration: 300 }}>
 						<NavHistory item={{ id: conversation.conversation_id, title: conversation.title }} expanded={$sidebarExpanded} />
 					</div>
 				{/each}
