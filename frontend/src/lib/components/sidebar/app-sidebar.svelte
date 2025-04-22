@@ -3,11 +3,16 @@
     import * as Tooltip from "$lib/components/ui/tooltip";
     import {ChevronsLeftIcon, ChevronsRightIcon, SidebarIcon} from 'svelte-feather-icons';
     import SidebarMain from "./sidebar-main.svelte";
-    import SidebarSecondary from "./sidebar-secondary.svelte";
     import SidebarFooter from "$lib/components/sidebar/sidebar-footer.svelte";
     import MenubarNav from "$lib/components/sidebar/sidebar-menu.svelte";
     import { sidebarExpanded, toggleSidebar } from '../../stores/sidbarStore';
     import { fade } from 'svelte/transition';
+    import { onMount } from "svelte";
+    let isMac = false;
+
+    onMount(() => {
+        isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    });
     
     // Prevent wheel events from propagating outside the sidebar
     function handleWheel(event: WheelEvent) {
@@ -58,7 +63,11 @@
                     </Tooltip.Trigger>
                     <Tooltip.Content side="right" sideOffset={5}>
                         {$sidebarExpanded ? "Collapse" : "Expand"}
-                        <span class="text-xs">- ⌘\</span>
+                        {#if isMac}
+                            <span class="text-xs">- ⌘\</span>
+                        {:else}
+                            <span class="text-xs">- Ctrl+\</span>
+                        {/if}
                     </Tooltip.Content>
                 </Tooltip.Root>
             </div>
@@ -90,7 +99,11 @@
                     </Tooltip.Trigger>
                     <Tooltip.Content side="right" sideOffset={5}>
                         {$sidebarExpanded ? "Collapse" : "Expand"}
-                        <span class="text-xs">- ⌘\</span>
+                        {#if isMac}
+                            <span class="text-xs">- ⌘\</span>
+                        {:else}
+                            <span class="text-xs">- Ctrl+\</span>
+                        {/if}
                     </Tooltip.Content>
                 </Tooltip.Root>
             </div>
