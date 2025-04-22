@@ -4,6 +4,7 @@ export interface ChatSource {
     filePath: string;
     title: string;
     showTooltip: boolean;
+    fileUrl?: string;
 }
 
 export interface ChatMessage {

@@ -6,6 +6,7 @@ export function processSource(payload: any, botMessage: ChatMessage) {
     const sourceExtension = payload.extension;
     const sourceFilePath = payload.file_path;
     const sourceTitle = payload.title;
+    const sourceFileUrl = payload.file_url;
 
     const source : ChatSource = {
         id: sourceId,
@@ -13,6 +14,7 @@ export function processSource(payload: any, botMessage: ChatMessage) {
         filePath: sourceFilePath,
         title: sourceTitle,
         showTooltip: true,
+        fileUrl: sourceFileUrl
     }
 
     botMessage.sources.push(source);
@@ -111,6 +113,7 @@ export function parseConversation(conversation: Conversation): ChatMessage[] {
           extension: source.extension,
           filePath: source.file_path,
           title: source.title,
+          fileUrl: source.file_url,
           showTooltip: true
         })) : []
       })
