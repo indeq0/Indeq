@@ -88,6 +88,7 @@ export const actions = {
       sameSite: 'lax',
       maxAge: 300, // 5 minutes
     });
+    
     return { success: true };
   }
 } satisfies Actions;

@@ -43,8 +43,8 @@ type Config struct {
 
 const (
 	subjectVerify = "Indeq - Verify Your Account"
-	subjectReset = "Indeq - Reset Your Password"
-	verifyBody = `Welcome to Indeq!
+	subjectReset  = "Indeq - Reset Your Password"
+	verifyBody    = `Welcome to Indeq!
 
 To verify your account, enter the following 6-digit code:
 
@@ -177,6 +177,43 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}
 
 	if existingUser != "" {
+
+		// link to google account here
+		print("User not created, trying to find existing user")
+
+		// check if userID
+		var userId string
+		var googleId string
+		var passwordHash sql.NullString
+		err = s.db.QueryRowContext(
+			ctx,
+			"SELECT id, google_id, password_hash FROM users WHERE email = $1",
+			strings.ToLower(req.Email), // Normalize email
+		).Scan(&userId, &googleId, &passwordHash)
+
+		if err != sql.ErrNoRows {
+
+			// Google ID exists without a password hash
+			if err == nil && googleId != "" && (passwordHash.String == "") {
+				tx, err := s.db.BeginTx(ctx, nil)
+				if err != nil {
+					return nil, fmt.Errorf("failed to begin transaction: %v", err)
+				}
+				defer tx.Rollback()
+
+				err = tx.QueryRowContext(
+					ctx,
+					"UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id",
+					passwordHash,
+					strings.ToLower(req.Email),
+				).Scan()
+				if err := tx.Commit(); err != nil {
+					return nil, fmt.Errorf("failed to commit transaction: %v", err)
+				}
+				return &pb.RegisterResponse{Success: true}, nil
+			}
+		}
+
 		return &pb.RegisterResponse{
 			Success: false,
 			Error:   "Email already exists!",
@@ -466,33 +503,6 @@ func (s *authServer) VerifyOTP(ctx context.Context, req *pb.VerifyOTPRequest) (*
 		userId, err := createUser(ctx, tx, strings.ToLower(payload.Email), payload.HashedPassword, payload.Name)
 		if err != nil {
 
-			// check if google account in db has password hash associated 
-			// var userId string
-			// var googleId string
-			// var passwordHash sql.NullString
-			// err = tx.QueryRowContext(
-			// 	ctx,
-			// 	"SELECT id, google_id, password_hash FROM users WHERE email = $1",
-			// 	strings.ToLower(req.Email), // Normalize email
-			// ).Scan(&userId, &googleId, &passwordHash)
-
-			// if err != sql.ErrNoRows {
-
-			// 	// Google ID exists without a password hash
-			// 	if err == nil && googleId != "" && (passwordHash.String == "") {
-			// 		err = tx.QueryRowContext(
-			// 			ctx,
-			// 			"UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id",
-			// 			encodedHash,
-			// 			strings.ToLower(req.Email),
-			// 		).Scan()
-			// 		if err := tx.Commit(); err != nil {
-			// 			return nil, fmt.Errorf("failed to commit transaction: %v", err)
-			// 		}
-			// 		return &pb.RegisterResponse{Success: true}, nil
-			// 	}
-			// 	return &pb.RegisterResponse{Success: false, Error: "email already exists"}, nil
-			// }
 			// otherwise return an error
 			return &pb.VerifyOTPResponse{
 				Success: false,
@@ -979,8 +989,8 @@ func (s *authServer) GetAlias(ctx context.Context, req *pb.GetAliasRequest) (*pb
 }
 
 // rpc(context, delete account request)
-//	- takes a user id and deletes the user's account from the database
-//	- returns an empty response on success, or error on failure
+//   - takes a user id and deletes the user's account from the database
+//   - returns an empty response on success, or error on failure
 func (s *authServer) DeleteAccount(ctx context.Context, req *pb.DeleteUserRequest) (*pb.DeleteUserResponse, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -997,7 +1007,7 @@ func (s *authServer) DeleteAccount(ctx context.Context, req *pb.DeleteUserReques
 	}
 	for _, conversation := range conversations.ConversationHeaders {
 		_, err = s.queryService.DeleteConversation(ctx, &pb.QueryDeleteConversationRequest{
-			UserId:       	req.UserId,
+			UserId:         req.UserId,
 			ConversationId: conversation.ConversationId,
 		})
 		if err != nil {
@@ -1036,7 +1046,6 @@ func (s *authServer) DeleteAccount(ctx context.Context, req *pb.DeleteUserReques
 	if err != nil {
 		return &pb.DeleteUserResponse{}, err
 	}
-
 
 	if err := tx.Commit(); err != nil {
 		return &pb.DeleteUserResponse{}, err
