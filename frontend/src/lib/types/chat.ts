@@ -4,6 +4,7 @@ export interface ChatSource {
     filePath: string;
     title: string;
     showTooltip: boolean;
+    fileUrl?: string;
 }
 
 export interface ChatMessage {
@@ -14,6 +15,7 @@ export interface ChatMessage {
     sources: ChatSource[];
     sourcesScrollAtEnd?: boolean;
     isScrollable?: boolean;
+    model?: string;
 }
 
 export interface ChatState {
