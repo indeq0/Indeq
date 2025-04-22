@@ -505,7 +505,7 @@ jobs:
           # Login to ECR without credentials (using IAM role)
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
           
-          # # Run docker compose with absolute path
-          # docker compose -f /home/ec2-user/docker-compose-ec2.yaml up -d
+          # Run docker compose with absolute path
+          docker compose -f /home/ec2-user/docker-compose-ec2.yaml up -d
 
         EOF
