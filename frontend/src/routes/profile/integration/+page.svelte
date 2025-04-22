@@ -70,8 +70,8 @@
   }
 </script>
 
-<div class="min-h-screen mt-7 px-5">
-  <div class="w-full mx-auto py-8">
+<div class="h-full overflow-hidden mt-7 px-5">
+  <div class="w-full mx-auto py-8 overflow-auto h-full">
     <h2 class="text-xl font-medium mb-4 text-gray-900 dark:text-white">Integrations</h2>
     <section class="mb-12 mt-4">
       {#each integrations as integration}
