@@ -18,8 +18,8 @@ jobs:
       contents: read
 
     steps:
-    # - name: Checkout Repository
-    #   uses: actions/checkout@v2
+    - name: Checkout Repository
+      uses: actions/checkout@v2
 
     # - name: Install Protocol Buffers Compiler
     #   run: |
