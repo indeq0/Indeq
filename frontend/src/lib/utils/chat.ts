@@ -112,7 +112,8 @@ export function parseConversation(conversation: Conversation): ChatMessage[] {
           filePath: source.file_path,
           title: source.title,
           showTooltip: true
-        })) : []
+        })) : [],
+        model: message.model
       })
     }
   }

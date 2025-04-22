@@ -40,6 +40,24 @@
         }
       }, 0);
     }
+
+    export function setInputValue(text: string) {
+      userQuery = text;
+      
+      // Focus and resize the textarea after setting the value
+      setTimeout(() => {
+        if (textareaElement) {
+          textareaElement.focus();
+          
+          // Adjust height to fit content
+          textareaElement.style.height = 'auto';
+          const newHeight = textareaElement.scrollHeight;
+          const maxHeight = 450;
+          textareaElement.style.height = Math.min(newHeight, maxHeight) + 'px';
+          textareaElement.style.overflowY = newHeight > maxHeight ? 'auto' : 'hidden';
+        }
+      }, 0);
+    }
 </script>
   
 <div class="sticky bottom-0 left-0 right-0 flex justify-center z-10 opacity-95 focus-within:opacity-100 chat-input-container">
