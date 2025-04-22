@@ -312,6 +312,28 @@ func (nc *NotionChunker) ProcessBlocks(blockResponse NotionPageResponse) []Proce
 						}
 					}
 				}
+			} else if richText, ok := block.Content["rich_text"].(map[string]interface{}); ok {
+				if plainText, ok := richText["plain_text"].(string); ok {
+					blockContent += plainText + " "
+				} else if textArr, ok := richText["text"].([]map[string]interface{}); ok {
+					for _, text := range textArr {
+						if content, ok := text["content"].(string); ok {
+							blockContent += content + " "
+						}
+					}
+				}
+			} else {
+				if richTextArr, ok := block.Content["rich_text"].([]map[string]interface{}); ok {
+					for _, rt := range richTextArr {
+						if plainText, ok := rt["plain_text"].(string); ok {
+							blockContent += plainText + " "
+						} else if text, ok := rt["text"].(map[string]interface{}); ok {
+							if content, ok := text["content"].(string); ok {
+								blockContent += content + " "
+							}
+						}
+					}
+				}
 			}
 		case "image", "video", "file", "pdf":
 			if url, ok := block.Content["url"].(string); ok {
@@ -776,7 +798,7 @@ func (s *crawlingServer) processNotionDatabase(ctx context.Context, client *http
 	}
 
 	if len(dbResponse.Description) > 0 {
-		var descriptionText string
+		descriptionText := ""
 		for _, text := range dbResponse.Description {
 			descriptionText += text.PlainText + " "
 		}
