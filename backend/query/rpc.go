@@ -177,9 +177,16 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 	// TODO: implement function calling for better filtering (dates, titles, etc.)
 	// TODO: implement query conversion for better searching
 
-	expandedQuery, searchNeeded, err := s.expandQuery(ctx, req.Query, req.ConversationId)
+	var expandedQuery = req.Query
+	searchNeeded, err := s.shouldWeSearch(ctx, req.Query, req.ConversationId)
 	if err != nil {
-		return &pb.QueryResponse{}, fmt.Errorf("failed to expand query: %w", err)
+		return &pb.QueryResponse{}, fmt.Errorf("failed to determine if search is needed: %w", err)
+	}
+	if searchNeeded {
+		expandedQuery, err = s.expandQuery(ctx, req.Query, req.ConversationId)
+		if err != nil {
+			return &pb.QueryResponse{}, fmt.Errorf("failed to expand query: %w", err)
+		}
 	}
 	log.Print("got the expanded query: ", expandedQuery, "\n do we need to search? ", searchNeeded)
 
@@ -437,44 +444,116 @@ func (s *queryServer) sendToQueue(ctx context.Context, channel *amqp.Channel, qu
 
 // func(context, query to expand, conversation id)
 //   - takes in a query and returns the expanded query that ideally contains better keywords for search
-//   - will return (..., FALSE, ...) if a search call is not needed
 //   - can be set to return the original query if the env variable QUERY_EXPANSION is set to false
-func (s *queryServer) expandQuery(ctx context.Context, query string, conversationID string) (string, bool, error) {
+func (s *queryServer) expandQuery(ctx context.Context, query string, conversationID string) (string, error) {
 	if os.Getenv("QUERY_EXPANSION") == "false" {
-		return query, true, nil // Return original query, indicate search is needed
+		return query, nil
 	}
 
 	// Get the conversation history
 	conversation, err := s.getConversation(ctx, conversationID)
 	if err != nil {
-		return query, true, fmt.Errorf("failed to get conversation: %w", err)
+		return query, fmt.Errorf("failed to get conversation: %w", err)
 	}
 
 	// Set up the model and session
 	session := s.geminiFlash2ModelLight.StartChat()
+	conversation.SummarizedMessages = append(conversation.SummarizedMessages, &pb.QueryMessage{
+		Sender: "user",
+		Text:   query,
+	})
 	session.History = s.convertConversationToSummarizedChatHistory(conversation)
 
-	// Send the message
-	resp, err := session.SendMessage(ctx, genai.Text(query))
+	// Send the fixed instruction to the LLM
+	resp, err := session.SendMessage(ctx, genai.Text("call the generate_search_query function"))
 	if err != nil {
-		return query, true, fmt.Errorf("failed to send message to Google Gemini: %w", err)
+		return query, fmt.Errorf("failed to send message to Google Gemini: %w", err)
 	}
 
 	// Process the response to check for function calls
 	if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
 		if funcCall, ok := resp.Candidates[0].Content.Parts[0].(genai.FunctionCall); ok {
-			if action, ok := funcCall.Args["action"].(string); ok {
-				if action == "search" {
-					if expandedQuery, ok := funcCall.Args["expanded_query"].(string); ok {
-						return expandedQuery, true, nil
-					}
-					return query, true, fmt.Errorf("failed to get expanded query from function call, even when expected")
-				} else if action == "direct_answer" {
-					return query, false, nil
+			// Check if the correct function was called (optional but good practice)
+			if funcCall.Name == "generate_search_query" {
+				if expandedQuery, ok := funcCall.Args["expanded_query"].(string); ok {
+					log.Printf("Expanded query: %s", expandedQuery)
+					return expandedQuery, nil // Successfully extracted expanded query
 				}
+				log.Printf("Error: 'expanded_query' argument missing or not a string in function call: %v", funcCall.Args)
+			} else {
+				log.Printf("Error: Unexpected function call name '%s'", funcCall.Name)
 			}
+		} else {
+			log.Printf("Warning: Model response did not contain a function call as expected. Response part: %v", resp.Candidates[0].Content.Parts[0])
 		}
+	} else {
+		log.Println("Error: Model response was empty or malformed.")
 	}
 
-	return query, true, nil
+	// If we reach here, something went wrong with extracting the function call/argument
+	log.Printf("Failed to get expanded query from function call, using original query: %s", query)
+	return query, nil
+}
+
+// func(context, query, conversation id)
+//   - takes in a query and returns true if we should search, false otherwise
+func (s *queryServer) shouldWeSearch(ctx context.Context, query string, conversationID string) (bool, error) {
+	// Get the conversation history
+	conversation, err := s.getConversation(ctx, conversationID)
+	if err != nil {
+		// Log the error but default to searching if history fetch fails
+		log.Printf("Error getting conversation %s, defaulting to search: %v", conversationID, err)
+		return true, fmt.Errorf("failed to get conversation: %w", err)
+	}
+
+	// Set up the model and session
+	session := s.geminiFlash2ModelYesNoSearch.StartChat()
+	// Only include user messages in the chat history, and add the incoming query as the last message
+	userOnlyConversation := filterUserMessages(conversation)
+	userOnlyConversation.SummarizedMessages = append(userOnlyConversation.SummarizedMessages, &pb.QueryMessage{
+		Sender: "user",
+		Text:   query,
+	})
+	session.History = s.convertConversationToSummarizedChatHistory(userOnlyConversation)
+
+	// Send the fixed instruction to the LLM
+	resp, err := session.SendMessage(ctx, genai.Text("call the should_search_connections function"))
+	if err != nil {
+		// Log the error but default to searching on API error
+		log.Printf("Error sending message to Gemini for shouldWeSearch, defaulting to search: %v", err)
+		return true, fmt.Errorf("failed to send message to Google Gemini: %w", err)
+	}
+
+	// Process the response to check for function calls
+	if len(resp.Candidates) > 0 && len(resp.Candidates[0].Content.Parts) > 0 {
+		if funcCall, ok := resp.Candidates[0].Content.Parts[0].(genai.FunctionCall); ok {
+			// Check if the correct function was called
+			if funcCall.Name == "should_search_connections" {
+				if decision, ok := funcCall.Args["decision"].(string); ok {
+					if decision == "yes" {
+						log.Println("Decision: Search required.")
+						return true, nil
+					} else if decision == "no" {
+						log.Println("Decision: No search required.")
+						return false, nil
+					} else {
+						log.Printf("Error: Unexpected value '%s' for 'decision' argument in function call: %v", decision, funcCall.Args)
+						return true, nil 
+					}
+				} else {
+					log.Printf("Error: 'decision' argument missing or not a string in function call: %v", funcCall.Args)
+					return true, nil
+				}
+			} else {
+				log.Printf("Error: Unexpected function call name '%s', expected 'should_search_connections'", funcCall.Name)
+				return true, nil
+			}
+		} else {
+			log.Printf("Warning: Model response did not contain a function call as expected. Response part: %v", resp.Candidates[0].Content.Parts[0])
+			return true, nil
+		}
+	} else {
+		log.Println("Error: Model response was empty or malformed, defaulting to search.")
+		return true, nil
+	}
 }
