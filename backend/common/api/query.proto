@@ -78,8 +78,9 @@ message QuerySourceMessage {
 message QueryMessage {
     string text = 1;
     string sender = 2; // should be "user" or "model"
-    repeated string reasoning = 3;
-    repeated QuerySourceMessage sources = 4;
+    string model = 3; // will be blank for sender = "user", but e.g. "gemini-2.0-flash" for sender = "model"
+    repeated string reasoning = 4;
+    repeated QuerySourceMessage sources = 5;
 }
 
 message QueryConversation {

@@ -40,6 +40,7 @@ type queryServer struct {
 	geminiFlash2ModelHeavy         *genai.GenerativeModel
 	geminiFlash2ModelLight         *genai.GenerativeModel
 	geminiFlash2ModelSummarization *genai.GenerativeModel
+	geminiFlash2ModelTitle		   *genai.GenerativeModel	
 	couchdbClient                  *kivik.Client
 	conversationsDB                *kivik.DB
 	ownershipDB                    *kivik.DB
@@ -251,6 +252,25 @@ func (s *queryServer) connectToLLMApis() {
 		},
 	}
 	s.geminiFlash2ModelSummarization = summarizationModel
+
+	titleModel := client.GenerativeModel("gemini-2.0-flash-lite")
+	titleModel.SetTemperature(0.3)
+	titleModel.SetTopK(1)
+	titleModel.SetTopP(0.95)
+	titleModel.SetMaxOutputTokens(64)
+	titleModel.ResponseMIMEType = "text/plain"
+	systemPrompt = "You are an expert at creating concise titles for conversations between a human (referred to as the user) and an AI assistant called Indeq.\n\n" +
+		"When told to create a title, follow these guidelines:\n" +
+		"1. Focus on capturing the key points, questions, and information exchanged.\n" +
+		"2. Maintain factual accuracy while condensing the exchange.\n" +
+		"3. The title should be significantly shorter than the original conversation while preserving the essential context needed for understanding the interaction.\n\n"
+
+	titleModel.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{
+			genai.Text(systemPrompt),
+		},
+	}
+	s.geminiFlash2ModelTitle = titleModel
 }
 
 // func()
