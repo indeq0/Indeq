@@ -462,8 +462,8 @@ jobs:
     - name: Copy docker-compose file to EC2
       run: |
         # Copy the docker-compose file to EC2
-        scp -o StrictHostKeyChecking=no -i private_key.pem backend/docker-compose-ec2.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
-        scp -o StrictHostKeyChecking=no -i private_key.pem backend/common/config/.env ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/common/config/.env
+        scp -v -o StrictHostKeyChecking=no -i private_key.pem backend/docker-compose-ec2.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
+        scp -v -o StrictHostKeyChecking=no -i private_key.pem backend/common/config/.env ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/common/config/.env
 
     - name: Deploy to EC2
       run: |
@@ -487,25 +487,25 @@ jobs:
             echo "Docker installed successfully"
           fi
 
-          # Install Docker Compose V2 if not present
-          if ! command -v docker-compose &> /dev/null && ! command -v docker compose &> /dev/null; then
-            echo "Installing Docker Compose V2..."
-            # For Amazon Linux 2023
-            sudo mkdir -p /usr/local/lib/docker/cli-plugins
-            sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-            sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-          fi
+          # # Install Docker Compose V2 if not present
+          # if ! command -v docker-compose &> /dev/null && ! command -v docker compose &> /dev/null; then
+          #   echo "Installing Docker Compose V2..."
+          #   # For Amazon Linux 2023
+          #   sudo mkdir -p /usr/local/lib/docker/cli-plugins
+          #   sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+          #   sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+          # fi
 
-          # Configure AWS CLI
-          aws configure set region us-east-1
+          # # Configure AWS CLI
+          # aws configure set region us-east-1
 
-          # Verify IAM role
-          aws sts get-caller-identity
+          # # Verify IAM role
+          # aws sts get-caller-identity
 
-          # Login to ECR without credentials (using IAM role)
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+          # # Login to ECR without credentials (using IAM role)
+          # aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
           
-          # Run docker compose with absolute path
-          docker compose -f /home/ec2-user/docker-compose-ec2.yaml up -d
+          # # Run docker compose with absolute path
+          # docker compose -f /home/ec2-user/docker-compose-ec2.yaml up -d
 
         EOF
