@@ -50,6 +50,13 @@ func (p *PdfProcessor) PdfProcess(ctx context.Context, file File) (File, error) 
 	if err != nil {
 		return file, err
 	}
+
+	defer func() {
+		if err := os.Remove(metadata.Title); err != nil {
+			fmt.Printf("Warning: failed to delete PDF file %s: %v\n", metadata.Title, err)
+		}
+	}()
+
 	text, err := extractText(metadata.Title)
 	if err != nil {
 		return file, err
@@ -68,6 +75,12 @@ func (p *PdfProcessor) PdfRetrieve(ctx context.Context, metadata Metadata, chunk
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		if err := os.Remove(metadata.Title); err != nil {
+			fmt.Printf("Warning: failed to delete PDF file %s: %v\n", metadata.Title, err)
+		}
+	}()
 
 	text, err := extractText(metadata.Title)
 	if err != nil {
