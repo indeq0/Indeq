@@ -61,13 +61,12 @@ jobs:
           if [[ "$secret_name" != GITHUB_* ]] && [[ "$secret_name" != "GH_"* ]]; then
             # Use indirect reference to get secret value
             secret_value="${!secret_name}"
-            echo "$secret_name=${!secret_name}" >> .env
+            echo "$secret_name=$secret_value" >> .env
           fi
         done
       env:
-        # This makes all secrets available as environment variables
-        ${{ toJSON(secrets) }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ${{ toJSON(secrets) }}
 
     - name: Verify .env creation (safely)
       run: |
