@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY_NAMESPACE: indeq
-  IMAGE_TAG: "14586775921"
+  IMAGE_TAG: ${{ github.run_id }}
 
 jobs:
   deploy:
@@ -21,31 +21,33 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v2
 
-    # - name: Install Protocol Buffers Compiler
-    #   run: |
-    #     sudo apt-get update
-    #     sudo apt-get install -y protobuf-compiler
+    ## comment out starting here
+    - name: Install Protocol Buffers Compiler
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y protobuf-compiler
 
-    # - name: Install Go
-    #   run: |
-    #     sudo apt-get update
-    #     sudo apt-get install -y golang-go
+    - name: Install Go
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y golang-go
 
-    # - name: Install protoc-gen-go
-    #   run: |
-    #     go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    - name: Install protoc-gen-go
+      run: |
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    # - name: Install protoc-gen-go-grpc
-    #   run: |
-    #     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    - name: Install protoc-gen-go-grpc
+      run: |
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    # - name: Check protoc-gen-go Installation
-    #   run: |
-    #     protoc-gen-go --version || echo "protoc-gen-go not found"
+    - name: Check protoc-gen-go Installation
+      run: |
+        protoc-gen-go --version || echo "protoc-gen-go not found"
+    ## comment out ending here  
 
     - name: Generate .env Files
       env:
@@ -335,23 +337,25 @@ jobs:
         
         mv .env backend/common/config/.env
 
-    # - name: Generate Code
-    #   run: |
-    #     cd backend/common && make gen
+    ## comment out starting here
+    - name: Generate Code
+      run: |
+        cd backend/common && make gen
 
-    # - name: Set up Docker Buildx
-    #   uses: docker/setup-buildx-action@v1
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
-    # - name: Configure AWS Credentials
-    #   uses: aws-actions/configure-aws-credentials@v2
-    #   with:
-    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    #     aws-region: ${{ env.AWS_REGION }}
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
-    # - name: Login to Amazon ECR
-    #   run: |
-    #     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
+    - name: Login to Amazon ECR
+      run: |
+        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
+    ## comment out ending here
 
     - name: Build and Push Docker Images
       run: |
@@ -405,6 +409,12 @@ jobs:
         # docker tag crawling:$IMAGE_TAG $crawlingImage
         # docker push $crawlingImage
 
+        docker build -t mqtt:$IMAGE_TAG -f backend/mqtt/Dockerfile backend
+        mqttImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/mqtt:$IMAGE_TAG"
+        # docker tag mqtt:$IMAGE_TAG $mqttImage
+        # docker push $mqttImage
+
+
         # Replace placeholder image references with actual ECR URLs
         sed -i "s|authImage|$authImage|g" backend/docker-compose-ec2.yaml
         sed -i "s|queryImage|$queryImage|g" backend/docker-compose-ec2.yaml
@@ -415,6 +425,8 @@ jobs:
         sed -i "s|vectorImage|$vectorImage|g" backend/docker-compose-ec2.yaml
         sed -i "s|desktopImage|$desktopImage|g" backend/docker-compose-ec2.yaml
         sed -i "s|integrationImage|$integrationImage|g" backend/docker-compose-ec2.yaml
+        sed -i "s|crawlingImage|$crawlingImage|g" backend/docker-compose-ec2.yaml
+        sed -i "s|mqttImage|$mqttImage|g" backend/docker-compose-ec2.yaml
 
         # Checking if the docker-compose.yaml file is updated
         cat backend/docker-compose-ec2.yaml
