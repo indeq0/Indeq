@@ -19,6 +19,7 @@ export interface ConversationMessage {
   text: string;
   sources?: ConversationSources[];
   reasoning?: string[];
+  model?: string;
 }
 
 export interface Conversation {

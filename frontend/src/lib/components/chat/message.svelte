@@ -3,14 +3,26 @@
   import { renderContent, renderLatex } from "$lib/utils/katex";
   import { scrollToPosition, handleScroll, initScrollCheck, positionTooltip, hideTooltip } from "$lib/utils/sources";
   import { toggleReasoning } from "$lib/utils/chat";
-  import { CheckIcon, ChevronDownIcon, FileIcon, FileTextIcon, HardDriveIcon } from "svelte-feather-icons";
-  
+  import { CheckIcon, ChevronDownIcon, FileIcon, FileTextIcon, HardDriveIcon, CopyIcon, RefreshCwIcon } from "svelte-feather-icons";
+  import { Button } from "$lib/components/ui/button";
+  import * as Tooltip from "$lib/components/ui/tooltip";
+  import { toast } from "svelte-sonner";
+
   export let message: ChatMessage;
   export let messageIndex: number;
   export let messages: ChatMessage[] = [];
   export let isReasoning: boolean = false;
+  export let isStreaming: boolean = false;
   export let truncateLength: number = 80;
   export let updateMessages: (msgs: ChatMessage[]) => void;
+  export let retryMessage: (query: string) => void;
+
+  function copyMessage() {
+    if (message.text) {
+      navigator.clipboard.writeText(message.text);
+      toast.success('Copied to clipboard', { duration: 1000, position: 'top-right'});
+    }
+  }
 </script>
 
 <div class="space-y-4">
@@ -184,8 +196,61 @@
       
       {#if message.text !== ''}
         <h3 class="text-sm font-semibold text-gray-600">Answer</h3>
-        <div class="mt-4 prose max-w-3xl mx-auto prose-lg">
-          {@html renderContent(message.text)}
+        <div class="message-wrapper">
+          <div class="prose max-w-3xl mx-auto prose-lg">
+            {@html renderContent(message.text)}
+          </div>
+          {#if !isStreaming}
+            <!-- Message toolbar -->
+            <div class="message-toolbar">
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild let:builder>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    class="rounded-xl hover:bg-[#e6e4e3]"
+                    builders={[builder]}
+                    on:click={copyMessage}
+                  >
+                    <CopyIcon size="15" />
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content side="bottom" class="bg-gray-800 text-white" sideOffset={5}>Copy</Tooltip.Content>
+              </Tooltip.Root>
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild let:builder>
+                  <Button
+                    variant="ghost" 
+                    size="icon" 
+                    class="rounded-xl hover:bg-[#e6e4e3]"
+                    builders={[builder]}
+                    on:click={() => {
+                      const previousIndex = messageIndex - 1;
+                      if (previousIndex >= 0) {
+                        const previousMessage = messages[previousIndex];
+                        if (previousMessage.sender === 'user') {
+                          retryMessage(previousMessage.text);
+                        } else {
+                          for (let i = previousIndex; i >= 0; i--) {
+                            if (messages[i].sender === 'user') {
+                              retryMessage(messages[i].text);
+                              break;
+                            }
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <RefreshCwIcon size="15" />
+                  </Button>
+                </Tooltip.Trigger>
+                <Tooltip.Content side="bottom" class="bg-gray-800 text-white" sideOffset={5}>Retry Message</Tooltip.Content>
+              </Tooltip.Root>
+              <div class="text-sm text-gray-500 ml-2 flex items-center">
+                Generated with {message.model}
+              </div>
+            </div>
+          {/if}
         </div>
       {:else}
         <div class="animate-pulse mt-4">Thinking...</div>
@@ -239,5 +304,41 @@
     opacity: 1;
     visibility: visible;
     transform: scaleY(1);
+  }
+
+  /* Message toolbar styles */
+  .message-wrapper {
+    position: relative;
+    margin-top: 1rem;
+  }
+  
+  .message-toolbar {
+    display: flex;
+    padding: 4px 0;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    margin-top: 0.5rem;
+  }
+
+  .message-wrapper:hover .message-toolbar {
+    opacity: 1;
+  }
+
+  .toolbar-icon {
+    color: #6b7280;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .toolbar-icon:hover {
+    background-color: #f3f4f6;
+    color: #374151;
   }
 </style> 

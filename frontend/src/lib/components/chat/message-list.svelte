@@ -4,7 +4,9 @@
   
   export let messages: ChatMessage[] = [];
   export let isReasoning: boolean = false;
+  export let isStreaming: boolean = false;
   export let updateMessages: (msgs: ChatMessage[]) => void;
+  export let retryMessage: (query: string) => void;
   let conversationContainer: HTMLDivElement;
   
 </script>
@@ -20,7 +22,9 @@
       {messageIndex} 
       {messages} 
       {isReasoning}
+      {isStreaming}
       {updateMessages}
+      {retryMessage}
     />
   {/each}
 </div>
