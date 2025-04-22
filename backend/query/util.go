@@ -336,3 +336,21 @@ func (s *queryServer) generateSummarizedTitle(ctx context.Context, conversation 
 
 	return title, nil
 }
+
+// func(conversation)
+//   - returns a copy of the conversation containing only user messages in SummarizedMessages
+//   - preserves ConversationId, Title, and FullMessages
+func filterUserMessages(conversation *pb.QueryConversation) *pb.QueryConversation {
+	filtered := &pb.QueryConversation{
+		ConversationId:     conversation.ConversationId,
+		Title:              conversation.Title,
+		SummarizedMessages: []*pb.QueryMessage{},
+		FullMessages:       conversation.FullMessages, // or nil if you want to exclude
+	}
+	for _, msg := range conversation.SummarizedMessages {
+		if msg.Sender == "user" {
+			filtered.SummarizedMessages = append(filtered.SummarizedMessages, msg)
+		}
+	}
+	return filtered
+}
