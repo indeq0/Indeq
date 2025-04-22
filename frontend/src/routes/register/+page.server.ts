@@ -81,6 +81,18 @@ export const actions = {
       return fail(400, { error: response.error });
     }
 
+    if (response.error == "Linked to Existing Google Account" && response.token) {
+      cookies.set('jwt', response.token, {
+        httpOnly: true, // Prevent client-side access
+        secure: true, // Only send over HTTPS
+        path: '/', // Accessible across the entire app
+        maxAge: 60 * 60 * 24, // 1 day
+        sameSite: 'lax'
+      });
+      
+      return { success: true, linked: true};
+    }
+
     cookies.set('pendingRegisterToken', response.token, {
       path: '/',
       httpOnly: true,
@@ -88,7 +100,7 @@ export const actions = {
       sameSite: 'lax',
       maxAge: 300, // 5 minutes
     });
-    
+
     return { success: true };
   }
 } satisfies Actions;

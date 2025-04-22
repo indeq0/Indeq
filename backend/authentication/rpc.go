@@ -210,7 +210,19 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 				if err := tx.Commit(); err != nil {
 					return nil, fmt.Errorf("failed to commit transaction: %v", err)
 				}
-				return &pb.RegisterResponse{Success: true}, nil
+
+				var currentTime = time.Now()
+
+				token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+					"sub": userId,
+					"exp": currentTime.Add(24 * time.Hour).Unix(), // current 1 day expiration
+					"iat": currentTime.Unix(),
+					"nbf": currentTime.Unix(),
+				})
+
+				tokenString, err := token.SignedString(s.jwtSecret)
+
+				return &pb.RegisterResponse{Success: true, Error: "Linked to Existing Google Account", Token: tokenString}, nil
 			}
 		}
 
