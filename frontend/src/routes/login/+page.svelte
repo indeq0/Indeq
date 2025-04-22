@@ -7,21 +7,35 @@
   import { toast } from 'svelte-sonner';
   import { goto } from '$app/navigation';
   import { fetchAndStoreUserData } from '$lib/utils/user';
-  
-  // Check for success or error in the server response
-  $: if (form?.success) {
-    fetchAndStoreUserData();
-    toast.success('Welcome back!');
-    goto('/chat');
-  }
-
-  $: if (form?.error) {
-    toast.error(form.error);
-  }
 
   export let form;
   
   let isGoogleLoading = false;
+  let isSubmitting = false;
+
+  // Simple enhance function to properly process form submission
+  function handleEnhance() {
+    return () => {
+      isSubmitting = true;
+      
+      return async ({ result, update }: { result: { type: string }, update: (opts?: { reset: boolean }) => void }) => {
+        isSubmitting = false;
+        
+        if (result.type === 'success') {
+          // Force the form component to update with the success property
+          update({ reset: false });
+
+          // Manually run the success actions here instead of relying on reactive statement
+          await fetchAndStoreUserData();
+          toast.success('Welcome back!');
+          await goto('/chat');
+        } else {
+          toast.error('Failed to login');
+          update();
+        }
+      };
+    };
+  }
 
   async function handleGoogleLogin() {
     try {
@@ -50,7 +64,7 @@
         <Card.Title class="text-2xl">Welcome back</Card.Title>
         <Card.Description>Enter your email below to login to your account</Card.Description>
       </Card.Header>
-      <form method="POST" use:enhance>
+      <form method="POST" use:enhance={handleEnhance()}>
         <Card.Content class="grid gap-4">
           <Button
             variant="outline"
@@ -93,7 +107,13 @@
           {/if}
         </Card.Content>
         <Card.Footer class="flex flex-col gap-4">
-          <Button type="submit" class="w-full">Login</Button>
+          <Button type="submit" class="w-full" disabled={isSubmitting}>
+            {#if isSubmitting}
+              Logging in...
+            {:else}
+              Login
+            {/if}
+          </Button>
           <Card.Description class="relative text-center">
             Don't have an account? <a class="underline hover:text-primary" href="/register"
               >Sign up</a
