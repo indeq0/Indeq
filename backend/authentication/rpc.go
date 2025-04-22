@@ -88,7 +88,7 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	}
 	defer tx.Rollback()
 
-	id, encodedHash, name, alias, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
+	id, encodedHash, name, alias, avatarNum, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
 	if err == sql.ErrNoRows {
 		// Even though the user doesn't exist we want to fake a comparison
 		dummyEncodedHash := fmt.Sprintf(
@@ -135,7 +135,7 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 		return nil, err
 	}
 
-	return &pb.LoginResponse{Token: tokenString, UserId: id, Name: name, Alias: alias}, nil
+	return &pb.LoginResponse{Token: tokenString, UserId: id, Name: name, Alias: alias, AvatarNum: int32(avatarNum)}, nil
 }
 
 // rpc(context, register request)
@@ -902,53 +902,69 @@ func (s *authServer) SignCSR(ctx context.Context, req *pb.SignCSRRequest) (*pb.S
 	}, nil
 }
 
-// rpc(context, set alias request)
-//   - takes a user id and an alias, and updates the user's alias in the database
+// rpc(context, set user account settings request)
+//   - takes a user id, name, alias, and avatar number, and updates the user's name, alias, and avatar in the database
 //   - returns an empty response on success, or error on failure
-func (s *authServer) SetAlias(ctx context.Context, req *pb.SetAliasRequest) (*pb.SetAliasResponse, error) {
+func (s *authServer) SetUserAccountSettings(ctx context.Context, req *pb.SetUserAccountSettingsRequest) (*pb.SetUserAccountSettingsResponse, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 	defer tx.Rollback()
 
-	email, passwordHash, name, _, err := getUserById(ctx, tx, req.UserId)
+	email, passwordHash, name, alias, avatarNum, err := getUserById(ctx, tx, req.UserId)
 	if err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 
-	_, err = updateUser(ctx, tx, req.UserId, email, passwordHash, name, req.Alias)
+	// perform updates on the existing values only if the values are not empty strings
+	if (req.Name != "") {
+		name = req.Name
+	}
+	if (req.Alias != "") {
+		alias = req.Alias
+	}
+	if (req.AvatarNum != 0) {
+		avatarNum = int(req.AvatarNum)
+	}
+
+	_, err = updateUser(ctx, tx, req.UserId, email, passwordHash, name, alias, avatarNum)
 	if err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 
-	return &pb.SetAliasResponse{}, nil
+	return &pb.SetUserAccountSettingsResponse{}, nil
 }
 
-// rpc(context, get alias request)
+// rpc(context, get user account settings request)
 //   - takes a user id and retrieves the user's alias from the database
 //   - returns the alias string on success, or error on failure
-func (s *authServer) GetAlias(ctx context.Context, req *pb.GetAliasRequest) (*pb.GetAliasResponse, error) {
+func (s *authServer) GetUserAccountSettings(ctx context.Context, req *pb.GetUserAccountSettingsRequest) (*pb.GetUserAccountSettingsResponse, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return &pb.GetAliasResponse{}, err
+		return &pb.GetUserAccountSettingsResponse{}, err
 	}
 	defer tx.Rollback()
 
-	_, _, _, alias, err := getUserById(ctx, tx, req.UserId)
+	email, _, name, alias, avatarNum, err := getUserById(ctx, tx, req.UserId)
 	if err != nil {
-		return &pb.GetAliasResponse{}, err
+		return &pb.GetUserAccountSettingsResponse{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return &pb.GetAliasResponse{}, err
+		return &pb.GetUserAccountSettingsResponse{}, err
 	}
 
-	return &pb.GetAliasResponse{Alias: alias}, nil
+	return &pb.GetUserAccountSettingsResponse{
+		Alias:   alias,
+		Name:    name,
+		Email:   email,
+		AvatarNum: int32(avatarNum),
+	}, nil
 }
 
 // rpc(context, delete account request)
