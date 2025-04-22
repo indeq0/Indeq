@@ -100,12 +100,25 @@ function processInlineCodeBlocks(html: string): string {
     return `<code class="inline-code" style="font-family: 'Work Sans', monospace; border-radius: 6px;">${escapedContent}</code>`;
   });
   
-  // Additional processing for source references in angle brackets like <1> or <1, 2, 3>
-  // Make sure we're not matching HTML tags or existing code elements
-  const sourceRefRegex = /(?<!<\/?[a-z][\s\S]*?>)(<)([0-9](?:\s*,\s*[0-9]+)*)(\>)(?![^<]*<\/code>|[^<]*<\/pre>)/g;
+  // Process source references that have been converted to HTML entities
+  // This matches &lt;1&gt; or &lt;1, 2, 3&gt;
+  const sourceRefRegex = /&lt;(\d+(?:\s*,\s*\d+)*)&gt;/g;
   
-  processedHtml = processedHtml.replace(sourceRefRegex, (match, openingBracket, content, closingBracket) => {
-    return `<code class="inline-code source-reference" style="font-family: 'Work Sans', monospace; border-radius: 6px;">${openingBracket}${content}${closingBracket}</code>`;
+  processedHtml = processedHtml.replace(sourceRefRegex, (match, content) => {
+    const numbers: string[] = content.split(',').map((num: string) => num.trim());
+    const badges = numbers.map((num: string) => 
+      `<span class="source-reference source-ref-${num}" style="display: inline-flex; align-items: center; padding: 2px 6px; margin: 0 2px; background-color: #e9eef8; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; font-size: 0.85em; color: #4f46e5; font-weight: 500;" data-tooltip="Source Reference #${num}">${num}</span>`
+    ).join(' ');
+    return `<span class="source-references-container" style="display: inline-flex; gap: 2px;">${badges}</span>`;
+  });
+  
+  // Also check for our placeholders as a backup
+  processedHtml = processedHtml.replace(/\[SOURCE_REF_START\]([\d,\s]+)\[SOURCE_REF_END\]/g, (match, content) => {
+    const numbers: string[] = content.split(',').map((num: string) => num.trim());
+    const badges = numbers.map((num: string) => 
+      `<span class="source-reference source-ref-${num}" style="display: inline-flex; align-items: center; padding: 2px 6px; margin: 0 2px; background-color: #e9eef8; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; font-size: 0.85em; color: #4f46e5; font-weight: 500;" data-tooltip="Source Reference #${num}">${num}</span>`
+    ).join(' ');
+    return `<span class="source-references-container" style="display: inline-flex; gap: 2px;">${badges}</span>`;
   });
   
   return processedHtml;
@@ -275,12 +288,27 @@ export function renderMarkdown(content: string) {
   content = content.replace(/\\\(([\s\S]*?)\\\)/g, (match, latex) => {
     return `<span class="math math-inline">${latex}</span>`;
   });
+  
+  // Process source references before markdown parser escapes angle brackets
+  content = content.replace(/<(\d+(?:\s*,\s*\d+)*)>/g, (match, numbers) => {
+    // Convert to a placeholder that won't be processed by markdown but we can identify later
+    return `[SOURCE_REF_START]${numbers}[SOURCE_REF_END]`;
+  });
 
   // Process markdown with marked
   const htmlContent = marked.parse(content) as string;
   
+  // Replace our source reference placeholders with properly styled code elements
+  const processedHtml = htmlContent.replace(/\[SOURCE_REF_START\]([\d,\s]+)\[SOURCE_REF_END\]/g, (match, content) => {
+    const numbers: string[] = content.split(',').map((num: string) => num.trim());
+    const badges = numbers.map((num: string) => 
+      `<span class="source-reference source-ref-${num}" style="display: inline-flex; align-items: center; padding: 2px 6px; margin: 0 2px; background-color: #e9eef8; border: 1px solid #cbd5e1; border-radius: 4px; cursor: pointer; font-size: 0.85em; color: #4f46e5; font-weight: 500;" data-tooltip="Source Reference #${num}">${num}</span>`
+    ).join(' ');
+    return `<span class="source-references-container" style="display: inline-flex; gap: 2px;">${badges}</span>`;
+  });
+  
   // Enhance code blocks with language and copy buttons
-  return enhanceCodeBlocks(htmlContent);
+  return enhanceCodeBlocks(processedHtml);
 }
 
 // Function to render content with Markdown and LaTeX support
