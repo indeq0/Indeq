@@ -52,21 +52,19 @@ jobs:
 
     - name: Create .env file
       run: |
-        # Create .env file and properly handle multi-line content
-        printf '%s\n' "${{ secrets.ENV1 }}" > .env
-        printf '%s\n' "${{ secrets.ENV2 }}" >> .env
-        printf '%s\n' "${{ secrets.ENV3 }}" >> .env
-        printf '%s\n' "${{ secrets.ENV4 }}" >> .env
-        printf '%s\n' "${{ secrets.ENV5 }}" >> .env
-        printf '%s\n' "${{ secrets.ENV6 }}" >> .env
-        printf '%s\n' "${{ secrets.ENV7 }}" >> .env
-
-        # Clean up the file
-        sed -i '/^[[:space:]]*$/d' .env  # Remove empty lines
-        sed -i 's/\r//g' .env            # Remove carriage returns
+        # Create directory
+        mkdir -p backend/common/config
         
-        # Verify file content (safely)
-        echo "Number of lines in .env: $(wc -l < .env)"
+        # Use cat with heredoc to prevent command interpretation
+        cat << 'EOL' > backend/common/config/.env
+        ${{ secrets.ENV1 }}
+        ${{ secrets.ENV2 }}
+        ${{ secrets.ENV3 }}
+        ${{ secrets.ENV4 }}
+        ${{ secrets.ENV5 }}
+        ${{ secrets.ENV6 }}
+        ${{ secrets.ENV7 }}
+        EOL
 
     ## comment out starting here
     # - name: Generate Code
