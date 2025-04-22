@@ -977,7 +977,9 @@ func (s *authServer) SetUserAccountSettings(ctx context.Context, req *pb.SetUser
 		avatarNum = int(req.AvatarNum)
 	}
 
-	_, err = updateUser(ctx, tx, req.UserId, email, passwordHash, name, alias, avatarNum)
+	// Convert passwordHash string to sql.NullString for updateUser
+	passwordHashNull := sql.NullString{String: passwordHash, Valid: passwordHash != ""}
+	_, err = updateUser(ctx, tx, req.UserId, email, passwordHashNull, name, alias, avatarNum)
 	if err != nil {
 		return &pb.SetUserAccountSettingsResponse{}, err
 	}
