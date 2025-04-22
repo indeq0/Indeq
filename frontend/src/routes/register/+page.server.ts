@@ -2,6 +2,52 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { GO_BACKEND_URL } from '$env/static/private';
 
+const login = async (email: string, password: string, cookies: Cookies) => {
+  const loginRes = await fetch(`${GO_BACKEND_URL}/api/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, password: password })
+  });
+
+  if (!loginRes.ok) {
+    const msg = await loginRes.text();
+    return fail(loginRes.status, { error: msg });
+  }
+
+  const response = await loginRes.json();
+  cookies.set('jwt', response.token, {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 60 * 60 * 24,
+    sameSite: 'lax'
+  });
+
+  cookies.set('registering', 'true', {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 5,
+    sameSite: 'lax'
+  });
+
+  cookies.set('user_created', 'true', {
+    httpOnly: true,
+    secure: true,
+    path: '/',
+    maxAge: 5,
+    sameSite: 'lax'
+  });
+
+  cookies.set("redirected_from", "register", {
+    httpOnly: true, // Prevent client-side access
+    secure: true, // Only send over HTTPS
+    path: '/', // Accessible across the entire app
+    maxAge: 5, // 5 seconds
+    sameSite: 'lax'
+  });
+};
+
 export const actions = {
   default: async ({ request, cookies }) => {
     const data = await request.formData();
@@ -35,6 +81,18 @@ export const actions = {
       return fail(400, { error: response.error });
     }
 
+    if (response.error == "Linked to Existing Google Account" && response.token) {
+      cookies.set('jwt', response.token, {
+        httpOnly: true, // Prevent client-side access
+        secure: true, // Only send over HTTPS
+        path: '/', // Accessible across the entire app
+        maxAge: 60 * 60 * 24, // 1 day
+        sameSite: 'lax'
+      });
+      
+      return { success: true, linked: true};
+    }
+
     cookies.set('pendingRegisterToken', response.token, {
       path: '/',
       httpOnly: true,
@@ -42,6 +100,7 @@ export const actions = {
       sameSite: 'lax',
       maxAge: 300, // 5 minutes
     });
+
     return { success: true };
   }
 } satisfies Actions;

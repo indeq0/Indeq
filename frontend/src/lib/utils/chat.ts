@@ -29,26 +29,6 @@ export function processReasoningMessage(data: string, botMessage: ChatMessage, s
     return;
   }
 
-  // Skip <think> tag or reasoning paragraph break
-  if (/\u003cthink\u003e/.test(data) || /\n\n/.test(data)) {
-    return;
-  }
-
-  // Handle </think> tag
-  if (/\u003c\/think\u003e/.test(data)) {
-    state.isReasoning = false;
-
-    // Auto-collapse reasoning section when reasoning is complete
-    botMessage.reasoningSectionCollapsed = true;
-
-    if (botMessage.reasoning.length > 0) {
-      botMessage.reasoning[botMessage.reasoning.length - 1].collapsed = true;
-    }
-    state.messages = [...state.messages.slice(0, -1), botMessage];
-
-    return;
-  }
-
   // Add or update reasoning text
   if (botMessage.reasoning.length > 0) {
     botMessage.reasoning[botMessage.reasoning.length - 1].text += data;

@@ -42,6 +42,7 @@
 .cache/
 
 package-lock.json
+frontend/package-lock.json
 
 # certificates
 certs*

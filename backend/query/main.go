@@ -40,6 +40,7 @@ type queryServer struct {
 	geminiFlash2ModelHeavy         *genai.GenerativeModel
 	geminiFlash2ModelLight         *genai.GenerativeModel
 	geminiFlash2ModelSummarization *genai.GenerativeModel
+	geminiFlash2ModelTitle		   *genai.GenerativeModel	
 	couchdbClient                  *kivik.Client
 	conversationsDB                *kivik.DB
 	ownershipDB                    *kivik.DB
@@ -181,16 +182,17 @@ func (s *queryServer) connectToLLMApis() {
 	s.systemPrompt = systemPrompt
 	s.geminiFlash2ModelHeavy = heavyModel
 
-	lightModel := client.GenerativeModel("gemini-2.0-flash-lite")
+	lightModel := client.GenerativeModel("gemini-2.0-flash")
 	lightModel.SetTemperature(1)
 	lightModel.SetTopK(1)
 	lightModel.SetTopP(0.95)
 	lightModel.SetMaxOutputTokens(200)
 	lightModel.ResponseMIMEType = "text/plain"
 	systemPrompt = "IMPORTANT: Do NOT answer the query directly. You are to ALWAYS responds using the handle_query function.\n" +
-		"For each user query, you must decide:\n" +
-		"- Use \"direct_answer\" when the query is about general knowledge, definitions, or topics that don't require up-to-date information\n" +
-		"- Use \"search\" when the query needs recent information, specific data, specialized knowledge, or personal information\n" +
+	"You are an LLM that is connected to a user's local files, cloud drive, email, etc. These are referred to as the user's CONNECTIONS.\n" +
+	"For each user query, you must decide:\n" +
+	"- Use \"direct_answer\" when the query is about general knowledge, definitions, or topics that don't require up-to-date information\n" +
+		"- Use \"search\" when the query needs information that can be found in the user's CONNECTIONS\n" +
 		"IMPORTANT: ALWAYS respond by calling the handle_query function with the appropriate action and expanded_query fields. NEVER respond with plain text."
 	lightModel.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
@@ -202,7 +204,7 @@ func (s *queryServer) connectToLLMApis() {
 		Name: "handle_query",
 		Description: "Process the user query by selecting one of two actions:\n" +
 			"1. 'direct_answer' - For general knowledge questions that don't need research\n" +
-			"2. 'search' - For queries requiring research or up-to-date information\n\n" +
+			"2. 'search' - For queries requiring information that can be found in the user's local files, cloud drive, email, etc. (referred to as CONNECTIONS)\n\n" +
 			"When 'search' is selected, provide 3-5 alternative phrasings and key terms as expanded_query",
 		Parameters: &genai.Schema{
 			Type: genai.TypeObject,
@@ -250,6 +252,26 @@ func (s *queryServer) connectToLLMApis() {
 		},
 	}
 	s.geminiFlash2ModelSummarization = summarizationModel
+
+	titleModel := client.GenerativeModel("gemini-2.0-flash-lite")
+	titleModel.SetTemperature(0.3)
+	titleModel.SetTopK(1)
+	titleModel.SetTopP(0.95)
+	titleModel.SetMaxOutputTokens(64)
+	titleModel.ResponseMIMEType = "text/plain"
+	systemPrompt = "You are an expert at creating concise titles for conversations between a human (referred to as the user) and an AI assistant called Indeq.\n\n" +
+		"When told to create a title, follow these guidelines:\n" +
+		"1. Focus on capturing the key points, questions, user intent, and information exchanged.\n" +
+		"2. Maintain factual accuracy while condensing the exchange.\n" +
+		"3. The title should be significantly shorter than the original conversation while preserving the essential context needed for understanding the interaction.\n" +
+		"4. ONLY output the title and nothing else.\n"
+
+	titleModel.SystemInstruction = &genai.Content{
+		Parts: []genai.Part{
+			genai.Text(systemPrompt),
+		},
+	}
+	s.geminiFlash2ModelTitle = titleModel
 }
 
 // func()

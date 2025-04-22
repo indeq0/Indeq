@@ -7,10 +7,12 @@ package api;
 service IntegrationService {
     rpc GetIntegrations(GetIntegrationsRequest) returns (GetIntegrationsResponse);
     rpc GetOAuthURL(GetOAuthURLRequest) returns (GetOAuthURLResponse);
+    rpc GetSSOURL(GetSSOURLRequest) returns (GetSSOURLResponse);
     rpc ConnectIntegration(ConnectIntegrationRequest) returns (ConnectIntegrationResponse);
     rpc DisconnectIntegration(DisconnectIntegrationRequest) returns (DisconnectIntegrationResponse);
     rpc ValidateOAuthState(ValidateOAuthStateRequest) returns (ValidateOAuthStateResponse);
     rpc GetAccessToken(GetAccessTokenRequest) returns (GetAccessTokenResponse) {}
+    rpc SSOConnect(SSOConnectRequest) returns (SSOConnectResponse);
 }
 
 enum Provider {
@@ -34,6 +36,14 @@ message GetOAuthURLRequest {
 }
 
 message GetOAuthURLResponse {
+    string url = 1;
+}
+
+message GetSSOURLRequest {
+    Provider provider = 1;
+}
+
+message GetSSOURLResponse {
     string url = 1;
 }
 
@@ -79,4 +89,29 @@ message GetAccessTokenResponse {
     string access_token = 2;
     string message = 3;
     string error_details = 4;
+}
+
+// SSO Connect request and response messages
+message SSOConnectRequest {
+    string provider = 1;
+    string auth_code = 2;
+    string state = 3;
+}
+
+message SSOConnectResponse {
+    bool success = 1;
+    string message = 2;
+    string error_details = 3;
+    string token = 4;  // JWT token for the authenticated user
+    string user_id = 5;  // ID of the user who was authenticated
+    bool user_created = 6;  // Indicates whether a new user was created
+}
+
+message HttpSSOConnectResponse {
+    bool success = 1;
+    string message = 2;
+    string error_details = 3;
+    string token = 4;  // JWT token for the authenticated user
+    string user_id = 5;  // ID of the user who was authenticated
+    bool user_created = 6;  // Indicates whether a new user was created
 }

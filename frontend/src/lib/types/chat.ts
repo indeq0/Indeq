@@ -19,5 +19,4 @@ export interface ChatMessage {
 
 export interface ChatState {
     messages: ChatMessage[];
-    isReasoning: boolean;
 }

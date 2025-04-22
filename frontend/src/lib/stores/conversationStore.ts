@@ -49,6 +49,28 @@ const createConversationStore = () => {
         console.error('Error fetching conversations:', err);
       }
     },
+    deleteConversation: async (conversationId: string) => {
+      try {
+        const response = await fetch(`/api/chat`, {
+          method: 'DELETE',
+          body: JSON.stringify({ conversation_id: conversationId })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Failed to delete conversation');
+        }
+        
+        // Update the local state by removing the deleted conversation
+        update(state => ({
+          ...state,
+          headers: state.headers.filter(header => header.conversation_id !== conversationId)
+        }));
+        
+      } catch (err) {
+        console.error('Error deleting conversation:', err);
+      }
+    },
     clear: () => {
       set({ headers: [], loading: false, error: null });
     }

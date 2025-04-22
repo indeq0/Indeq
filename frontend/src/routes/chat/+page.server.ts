@@ -2,9 +2,38 @@ import type { PageServerLoad } from './$types';
 import { redirect, error } from '@sveltejs/kit';
 import { GO_BACKEND_URL } from '$env/static/private';
 import type { DesktopIntegration } from '$lib/types/desktopIntegration';
+import { LogInIcon } from 'svelte-feather-icons';
 
 export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
   const session = cookies.get('jwt');
+  const userCreated = cookies.get('user_created');
+  const redirectedFrom = cookies.get('redirected_from');
+  const registering = cookies.get('registering');
+  const loggingIn = cookies.get('loggingIn');
+
+  // If user was just created, clear the cookie after 5 seconds
+  if (userCreated) {
+    cookies.set('user_created', '', {
+      path: '/',
+      maxAge: 5 // 5 seconds
+    });
+  }
+
+  // Clean up the registering cookie
+  if (registering) {
+    cookies.set('registering', '', {
+      path: '/',
+      maxAge: 5
+    });
+  }
+
+  if (loggingIn) {
+    cookies.set('loggingIn', '', {
+      path: '/',
+      maxAge: 5
+    });
+  }
+
   if (!session) {
     // No user, redirect to login
     throw redirect(302, '/login');
@@ -39,6 +68,10 @@ export const load: PageServerLoad = async ({ cookies, fetch, url }) => {
 
   return {
     integrations: providers,
-    desktopInfo: desktopIntegrationData
+    desktopInfo: desktopIntegrationData,
+    userCreated: userCreated,
+    redirectedFrom: redirectedFrom,
+    registering: registering,
+    loggingIn: loggingIn
   };
 };

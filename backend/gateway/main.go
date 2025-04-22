@@ -403,6 +403,45 @@ func handleOAuthURLGenerator(clients *ServiceClients) http.HandlerFunc {
 	}
 }
 
+func handleSSOOAuthGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received request to handle SSO OAuth URL generation")
+		var getOAuthURLRequest pb.HttpGetOAuthURLRequest
+		ctx := r.Context()
+
+		if err := json.NewDecoder(r.Body).Decode(&getOAuthURLRequest); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+
+		if getOAuthURLRequest.Provider == "" {
+			http.Error(w, "Missing provider", http.StatusBadRequest)
+			return
+		}
+
+		provider, err := stringToEnumProvider(getOAuthURLRequest.Provider)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		oAuthURLRes, err := clients.integrationClient.GetSSOURL(ctx, &pb.GetSSOURLRequest{
+			Provider: provider,
+		})
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to get SSO URL: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		respBody := &pb.HttpGetOAuthURLResponse{
+			Url: oAuthURLRes.Url,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		json.NewEncoder(w).Encode(respBody)
+	}
+}
+
 func handleGetIntegrationsGenerator(clients *ServiceClients) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Received request to get users integrations")
@@ -524,6 +563,42 @@ func handleConnectIntegrationGenerator(clients *ServiceClients) http.HandlerFunc
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(respBody)
+	}
+}
+
+// handleSSOLoginGenerator handles the OAuth callback for SSO flows
+// This is specifically for unauthenticated users who are signing in with Google SSO
+func handleSSOLoginGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Set up context
+		ctx := r.Context()
+
+		var httpRequest pb.SSOConnectRequest
+		if err := json.NewDecoder(r.Body).Decode(&httpRequest); err != nil {
+			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
+			return
+		}
+
+		if httpRequest.Provider == "" {
+			http.Error(w, "Missing Provider", http.StatusBadRequest)
+			return
+		}
+
+		if httpRequest.AuthCode == "" {
+			http.Error(w, "Missing authorization code", http.StatusBadRequest)
+			return
+		}
+
+		ssoResponse, err := clients.authClient.SSOLogin(ctx, &httpRequest)
+
+		if err != nil {
+			log.Printf("Error calling auth client's SSO login: %v", err)
+			http.Error(w, "Failed to connect with SSO", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(ssoResponse)
 	}
 }
 
@@ -711,7 +786,9 @@ func handleLoginGenerator(clients *ServiceClients) http.HandlerFunc {
 		httpResponse := &pb.HttpLoginResponse{
 			Token:  res.Token,
 			UserId: res.UserId,
-			Error:  res.Error,
+			Name:   res.Name,
+			Alias:  res.Alias,
+			AvatarNum: res.AvatarNum,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(httpResponse)
@@ -939,6 +1016,93 @@ func handleSignCSRGenerator(clients *ServiceClients) http.HandlerFunc {
 	}
 }
 
+func handleSetMeGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received set me request")
+		var setMeRequest pb.HttpSetMeRequest
+		if err := json.NewDecoder(r.Body).Decode(&setMeRequest); err != nil {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+		}
+
+		auth_header := r.Header.Get("Authorization")
+		auth_token := strings.TrimPrefix(auth_header, "Bearer ")
+		verifyRes, _ := clients.authClient.Verify(r.Context(), &pb.VerifyRequest{
+			Token: auth_token,
+		})
+
+		// try to make a set me request
+		_, err := clients.authClient.SetUserAccountSettings(r.Context(), &pb.SetUserAccountSettingsRequest{
+			UserId: verifyRes.UserId,
+			Alias: setMeRequest.Alias,
+			Name: setMeRequest.Name,
+			AvatarNum: setMeRequest.AvatarNum,
+		})
+
+		if err != nil {
+			http.Error(w, "Failed to set me", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func handleGetMeGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received get me request")
+
+		auth_header := r.Header.Get("Authorization")
+		auth_token := strings.TrimPrefix(auth_header, "Bearer ")
+		verifyRes, _ := clients.authClient.Verify(r.Context(), &pb.VerifyRequest{
+			Token: auth_token,
+		})
+
+		// try to make a get me request
+		accountRes, err := clients.authClient.GetUserAccountSettings(r.Context(), &pb.GetUserAccountSettingsRequest{
+			UserId: verifyRes.UserId,
+		})
+
+		if err != nil {
+			http.Error(w, "Failed to get user account settings", http.StatusInternalServerError)
+			return
+		}
+
+		httpResponse := &pb.HttpGetMeResponse{
+			Alias:       	accountRes.Alias,
+			Name:        	accountRes.Name,
+			Email:       	accountRes.Email,
+			AvatarNum:   	accountRes.AvatarNum,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(httpResponse)
+	}
+}
+
+func handleDeleteAccountGenerator(clients *ServiceClients) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received delete account request")
+
+		auth_header := r.Header.Get("Authorization")
+		auth_token := strings.TrimPrefix(auth_header, "Bearer ")
+		verifyRes, _ := clients.authClient.Verify(r.Context(), &pb.VerifyRequest{
+			Token: auth_token,
+		})
+
+		// try to make a delete account request
+		_, err := clients.authClient.DeleteAccount(r.Context(), &pb.DeleteUserRequest{
+			UserId: verifyRes.UserId,
+		})
+
+		if err != nil {
+			http.Error(w, "Failed to delete account", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func handleManualCrawlGenerator(clients *ServiceClients) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Received manual crawl request")
@@ -1029,9 +1193,6 @@ func main() {
 	}
 	defer authConn.Close()
 	authServiceClient := pb.NewAuthenticationServiceClient(authConn)
-	if _, err = authServiceClient.Login(context.Background(), &pb.LoginRequest{}); err != nil {
-		log.Fatal(err)
-	}
 
 	// Connect to the integration service
 	integrationConn, err := grpc.NewClient(
@@ -1108,10 +1269,15 @@ func main() {
 	mux.HandleFunc("POST /api/login", handleLoginGenerator(serviceClients))
 	mux.HandleFunc("POST /api/verify", handleVerifyGenerator(serviceClients))
 	mux.HandleFunc("POST /api/csr", handleSignCSRGenerator(serviceClients))
+	mux.HandleFunc("POST /api/set_me", authMiddleware(handleSetMeGenerator(serviceClients), serviceClients))
+	mux.HandleFunc("GET /api/get_me", authMiddleware(handleGetMeGenerator(serviceClients), serviceClients))
+	mux.HandleFunc("POST /api/delete_account", authMiddleware(handleDeleteAccountGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/connect", authMiddleware(handleConnectIntegrationGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/disconnect", authMiddleware(handleDisconnectIntegrationGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("GET /api/integrations", authMiddleware(handleGetIntegrationsGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/oauth", handleOAuthURLGenerator(serviceClients))
+	mux.HandleFunc("POST /api/ssooauth", handleSSOOAuthGenerator(serviceClients))
+	mux.HandleFunc("POST /api/ssologin", handleSSOLoginGenerator(serviceClients))
 	mux.HandleFunc("POST /api/waitlist", handleAddToWaitlist(serviceClients))
 	mux.HandleFunc("GET /api/desktop_stats", authMiddleware(handleGetDesktopStatsGenerator(serviceClients), serviceClients))
 	mux.HandleFunc("POST /api/manualcrawl", authMiddleware(handleManualCrawlGenerator(serviceClients), serviceClients))
