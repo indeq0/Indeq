@@ -283,3 +283,27 @@ func (s *desktopServer) updateUserOnlineStatus(ctx context.Context, userID strin
 
 	return nil
 }
+
+// func(context, current open transaction, user's ID)
+//   - deletes the crawl stats entry for a given user in the given transaction
+//   - deletes all associated indexed_files for a given user in the given transaction
+//   - assumes: the user exists in the database and you will close this transaction in the parent function
+func (s *desktopServer) deleteUserStats(ctx context.Context, tx *sql.Tx, userID string) error {
+	_, err := tx.ExecContext(ctx, `
+		DELETE FROM crawl_stats
+		WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user stats for user %s: %v", userID, err)
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		DELETE FROM indexed_files
+		WHERE user_id = $1
+	`, userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete user files for user %s: %v", userID, err)
+	}
+
+	return nil
+}

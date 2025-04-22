@@ -774,10 +774,13 @@ func (s *crawlingServer) verifyMappingsDeleted(ctx context.Context, userID strin
 
 // DeleteChunkMappingsForPlatform deletes all chunk mappings for a user's platform from CouchDB
 func (s *crawlingServer) DeleteChunkMappingsForPlatform(ctx context.Context, userID string, platform string) error {
+	// Microsoft and Google are not supported for chunk mapping deletion
+	if platform == "MICROSOFT" || platform == "GOOGLE" {
+		return nil
+	}
 	docID := fmt.Sprintf("%s_%s", userID, platform)
 	row := s.ChunkIDdb.Get(ctx, docID)
 	if row.Err() == nil {
-		// Document exists, get its revision and delete it
 		var doc map[string]interface{}
 		if err := row.ScanDoc(&doc); err != nil {
 			return fmt.Errorf("failed to scan CouchDB document: %v", err)
@@ -791,7 +794,6 @@ func (s *crawlingServer) DeleteChunkMappingsForPlatform(ctx context.Context, use
 			return fmt.Errorf("failed to delete chunk mappings from CouchDB: %v", err)
 		}
 	} else if !strings.Contains(row.Err().Error(), "not_found") {
-		// Return error only if it's not a "not found" error
 		return fmt.Errorf("failed to check CouchDB document: %v", row.Err())
 	}
 	return nil

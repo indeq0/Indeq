@@ -68,7 +68,10 @@ message HttpLoginRequest {
 message HttpLoginResponse {
   string token = 1;
   string user_id = 2;
-  string error = 3;
+  string name = 3;
+  string alias = 4;
+  int32 avatar_num = 5;
+  string error = 6;
 }
 
 message HttpVerifyResponse {
@@ -84,6 +87,23 @@ message HttpCSRRequest {
 message HttpCSRResponse {
   string certificate_base64 = 1;
   string error = 2;
+}
+
+message HttpSetMeRequest {
+  string name = 1;
+  string alias = 2;
+  int32 avatar_num = 3;
+}
+
+message HttpSetMeResponse {}
+
+message HttpGetMeRequest {}
+
+message HttpGetMeResponse {
+  string alias = 1;
+  string name = 2;
+  string email = 3;
+  int32 avatar_num = 4;
 }
 
 message HttpGetIntegrationsRequest {

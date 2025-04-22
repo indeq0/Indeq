@@ -181,7 +181,7 @@ func (s *queryServer) connectToLLMApis() {
 	s.systemPrompt = systemPrompt
 	s.geminiFlash2ModelHeavy = heavyModel
 
-	lightModel := client.GenerativeModel("gemini-2.0-flash-lite")
+	lightModel := client.GenerativeModel("gemini-2.0-flash")
 	lightModel.SetTemperature(1)
 	lightModel.SetTopK(1)
 	lightModel.SetTopP(0.95)
