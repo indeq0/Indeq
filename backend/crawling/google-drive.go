@@ -20,6 +20,7 @@ import (
 var mimeHandlers = map[string]func(context.Context, *http.Client, File) (File, error){
 	"application/vnd.google-apps.document":     ProcessGoogleDoc,
 	"application/vnd.google-apps.presentation": ProcessGoogleSlides,
+	"application/pdf":                          ProcessGooglePDF,
 }
 
 var (
@@ -125,7 +126,8 @@ func createGoogleFileMetadata(srv *drive.Service, userID string, file *drive.Fil
 // isValidGoogleFile checks if the file is a supported Google file type
 func isValidGoogleFile(mimeType string) bool {
 	return mimeType == "application/vnd.google-apps.document" ||
-		mimeType == "application/vnd.google-apps.presentation"
+		mimeType == "application/vnd.google-apps.presentation" ||
+		mimeType == "application/pdf"
 }
 
 // GetGoogleDriveList retrieves the list of files from Google Drive
@@ -344,13 +346,18 @@ func (s *crawlingServer) ProcessAllGoogleDriveFiles(ctx context.Context, client 
 		case "application/vnd.google-apps.document":
 			numWorkers, err = strconv.Atoi(os.Getenv("CRAWLING_GOOGLEDOCS_MAX_WORKERS"))
 			if err != nil {
-				fmt.Printf("Warning: failed to retrieve the k value from the env variables: %v", err)
+				fmt.Printf("Warning: failed to retrieve the k value for google docs from the env variables: %v", err)
 			}
 
 		case "application/vnd.google-apps.presentation":
 			numWorkers, err = strconv.Atoi(os.Getenv("CRAWLING_GOOGLESLIDES_MAX_WORKERS"))
 			if err != nil {
-				fmt.Printf("Warning: failed to retrieve the k value from the env variables: %v", err)
+				fmt.Printf("Warning: failed to retrieve the k value for google slides from the env variables: %v", err)
+			}
+		case "application/pdf":
+			numWorkers, err = strconv.Atoi(os.Getenv("CRAWLING_GOOGLEPDF_MAX_WORKERS"))
+			if err != nil {
+				fmt.Printf("Warning: failed to retrieve the k value for google pdf from the env variables: %v", err)
 			}
 		}
 
@@ -435,11 +442,6 @@ func (s *crawlingServer) ProcessAllGoogleDriveFiles(ctx context.Context, client 
 	if len(errs) > 0 {
 		return fmt.Errorf("some files failed to process: %v", errs)
 	}
-	if userID != "" {
-		log.Printf("Drive crawling complete for user %s", userID)
-	} else {
-		log.Print("No valid files found in Drive crawl")
-	}
 	return nil
 }
 
@@ -459,14 +461,16 @@ func GetStartPageToken(ctx context.Context, client *http.Client) (string, error)
 }
 
 // RetrieveFromDrive retrieves content based on file type
-func RetrieveFromDrive(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+func RetrieveFromDrive(ctx context.Context, client *http.Client, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	switch metadata.ResourceType {
 	case "application/vnd.google-apps.document":
-		return RetrieveGoogleDoc(ctx, client, metadata)
+		return RetrieveGoogleDoc(ctx, client, metadata, chunkIDs)
 	case "application/vnd.google-apps.presentation":
-		return RetrieveGoogleSlides(ctx, client, metadata)
+		return RetrieveGoogleSlides(ctx, client, metadata, chunkIDs)
+	case "application/pdf":
+		return RetrieveGooglePDF(ctx, client, metadata, chunkIDs)
 	default:
-		return TextChunkMessage{}, fmt.Errorf("unsupported resource type: %s", metadata.ResourceType)
+		return nil, fmt.Errorf("unsupported resource type: %s", metadata.ResourceType)
 	}
 }
 

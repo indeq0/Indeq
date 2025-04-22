@@ -34,6 +34,7 @@ type integrationServer struct {
 	crawlingService pb.CrawlingServiceClient
 	db              *sql.DB // integration database
 	redisClient     *redis.RedisClient
+	authClient      pb.AuthenticationServiceClient // Needs Integration service needs to call auth service to generate tokens
 }
 
 // TokenResponse represents the OAuth token response from our providers
@@ -499,6 +500,48 @@ func (s *integrationServer) GetOAuthURL(ctx context.Context, req *pb.GetOAuthURL
 	}, nil
 }
 
+// GetSSOURL generates a URL for Google SSO login
+// This function is specifically designed for SSO login flows where the user is not yet authenticated
+func (s *integrationServer) GetSSOURL(ctx context.Context, req *pb.GetSSOURLRequest) (*pb.GetSSOURLResponse, error) {
+	// Only support Google SSO for now
+	if req.Provider != pb.Provider_GOOGLE {
+		return nil, fmt.Errorf("only Google SSO is supported at this time")
+	}
+
+	providerStr, err := enumToString(req.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert provider to string: %v", err)
+	}
+	
+	state, err := generateState(providerStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate state: %v", err)
+	}
+
+	// Store the state in Redis with a special prefix for SSO flows
+	// This allows us to distinguish between regular OAuth and SSO flows
+	ssoStateKey := "sso:" + state
+	err = s.redisClient.StoreOAuthState(ctx, ssoStateKey, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to store SSO state: %v", err)
+	}
+
+	// Configure parameters for Google SSO
+	params := url.Values{}
+	params.Add("response_type", "code")
+	params.Add("state", state)
+	params.Add("redirect_uri", os.Getenv("GOOGLE_SSO_REDIRECT_URI"))
+	params.Add("scope", os.Getenv("GOOGLE_SSO_SCOPES"))
+	params.Add("client_id", os.Getenv("GOOGLE_SSO_CLIENT_ID"))
+	
+	// Build the authorization URL
+	authURL := os.Getenv("GOOGLE_AUTH_URL") + "?" + params.Encode()
+
+	return &pb.GetSSOURLResponse{
+		Url: authURL,
+	}, nil
+}
+
 func (s *integrationServer) GetIntegrations(ctx context.Context, req *pb.GetIntegrationsRequest) (*pb.GetIntegrationsResponse, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT provider
@@ -755,7 +798,7 @@ func main() {
 	}
 
 	// Load the TLS configuration values for crawling service
-	crawlingTLSConfig, err := config.LoadClientTLSFromEnv("CRAWLING_CRT", "CRAWLING_KEY", "CA_CRT")
+	clientTLSConfig, err := config.LoadClientTLSFromEnv("INTEGRATION_CRT", "INTEGRATION_KEY", "CA_CRT")
 	if err != nil {
 		log.Fatal("Error loading TLS client config for crawling service")
 	}
@@ -768,7 +811,7 @@ func main() {
 
 	crawlingConn, err := grpc.NewClient(
 		crawlingAddress,
-		grpc.WithTransportCredentials(credentials.NewTLS(crawlingTLSConfig)),
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
 	)
 	if err != nil {
 		log.Fatalf("Failed to connect to crawling service: %v", err)
@@ -839,12 +882,30 @@ func main() {
 	}
 	defer redisClient.Client.Close()
 
+	// Connect to authentication service
+	authAddress := os.Getenv("AUTH_ADDRESS")
+	if authAddress == "" {
+		log.Fatalf("AUTH_ADDRESS environment variable is required")
+	}
+
+	authConn, err := grpc.Dial(
+		authAddress,
+		grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+	)
+	if err != nil {
+		log.Fatalf("Failed to connect to auth service: %v", err)
+	}
+	defer authConn.Close()
+
+	authService := pb.NewAuthenticationServiceClient(authConn)
+
 	grpcServer := grpc.NewServer(opts...)
 	pb.RegisterIntegrationServiceServer(grpcServer, &integrationServer{
 		db:              db,
 		redisClient:     redisClient,
 		crawlingConn:    crawlingConn,
 		crawlingService: crawlingService,
+		authClient:      authService,
 	})
 	log.Printf("Integration Service listening on %v\n", listener.Addr())
 	if err := grpcServer.Serve(listener); err != nil {

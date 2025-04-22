@@ -4,18 +4,24 @@
   import "katex/dist/katex.min.css";
   import { initialize, startPolling, stopPolling, desktopIntegration } from '$lib/stores/desktopIntegration';
   import type { DesktopIntegration } from "$lib/types/desktopIntegration";
+  import { toast } from 'svelte-sonner';
   import { isIntegrated } from "$lib/utils/integration";
   import { goto } from "$app/navigation";
   import { modelStore } from "$lib/stores/modelStore";
+  import { userStore } from "$lib/stores/userStore";
   
   let userQuery = '';
   let isLoading = false;
   let conversationId = '';
   let chatInput: HTMLTextAreaElement;
 
-  export let data: { 
-    integrations: string[],
-    desktopInfo: DesktopIntegration,
+  export let data: { integrations: string[], desktopInfo: DesktopIntegration, userCreated: string, redirectedFrom: string, registering: string, loggingIn: string };
+
+  $: user = $userStore.user || {
+      name: "Guest",
+      email: "guest@example.com",
+      avatar: 3,
+      alias: "Guest"
   };
 
   onMount(() => {
@@ -23,6 +29,19 @@
     if (data.desktopInfo.isCrawling) {
       startPolling();
     }
+    
+    if (data.userCreated === 'true') {
+      toast.success('Welcome aboard! 🎉');
+    } else if (data.userCreated === 'false') {
+      toast.success('Welcome back! 👋');
+    }
+
+    if (data.redirectedFrom === 'login' && data.loggingIn != 'true') {
+      toast.info('You are already logged in. Please sign out to access the login page.');
+    } else if (data.redirectedFrom === 'register' && data.registering != 'true' ) {
+      toast.info('You are already logged in. Please sign out to access the register page.');
+    }
+  
     // Focus the chat input when the component mounts
     chatInput?.focus();
   });
@@ -72,7 +91,7 @@
   <div class="flex-1 flex flex-col w-full max-w-3xl items-center mt-[calc(33vh)]">
     <div class="w-full p-4 mb-3 text-center welcome-text" style="view-transition-name: welcome-text;">
       <div class="flex items-center justify-center gap-3">
-        <p class="text-3xl text-gray-700 font-light">How will you be productive today, Patrick?</p>
+        <p class="text-3xl text-gray-700 font-light">How will you be productive today, {user.alias}?</p>
       </div>
     </div>
     

@@ -4,17 +4,21 @@ option go_package = "github.com/cc-0000/indeq/common/api";
 
 package api;
 
+import "api/integration.proto";
+
 service AuthenticationService {
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc Register(RegisterRequest) returns (RegisterResponse);
     rpc Verify(VerifyRequest) returns (VerifyResponse);
     rpc SignCSR(SignCSRRequest) returns (SignCSRResponse);
+    rpc CreateOrUpdateGoogleUser(CreateOrUpdateGoogleUserRequest) returns (CreateOrUpdateGoogleUserResponse);
+    rpc SSOLogin(SSOConnectRequest) returns (SSOConnectResponse);
     rpc VerifyOTP(VerifyOTPRequest) returns (VerifyOTPResponse);
     rpc ForgotPassword(ForgotPasswordRequest) returns (ForgotPasswordResponse);
     rpc ResetPassword(ResetPasswordRequest) returns (ResetPasswordResponse);
     rpc ResendOTP(ResendOTPRequest) returns (ResendOTPResponse);
-    rpc SetAlias(SetAliasRequest) returns (SetAliasResponse);
-    rpc GetAlias(GetAliasRequest) returns (GetAliasResponse);
+    rpc SetUserAccountSettings(SetUserAccountSettingsRequest) returns (SetUserAccountSettingsResponse);
+    rpc GetUserAccountSettings(GetUserAccountSettingsRequest) returns (GetUserAccountSettingsResponse);
     rpc DeleteAccount(DeleteUserRequest) returns (DeleteUserResponse);
 }
 
@@ -28,6 +32,7 @@ message LoginResponse {
     string user_id = 2;
     string name = 3;
     string alias = 4;
+    int32 avatar_num = 5;
 }
 
 message RegisterRequest {
@@ -61,7 +66,17 @@ message SignCSRResponse {
     string certificate_base64 = 1;
 }
 
-message VerifyOTPRequest {
+message CreateOrUpdateGoogleUserRequest {
+    string google_id = 1;
+    string name = 2;
+    string email = 3;  // optional
+}
+
+message CreateOrUpdateGoogleUserResponse {
+    string user_id = 1;
+    string token = 2;    // JWT token for authentication
+    bool user_created = 3;  // Indicates whether a new user was created
+}message VerifyOTPRequest {
     string code = 1;
     string type = 2;
     string token = 3;
@@ -104,20 +119,25 @@ message ResetPasswordResponse {
     string error = 2;
 }
 
-message SetAliasRequest {
+message SetUserAccountSettingsRequest {
     string user_id = 1;
     string alias = 2;
+    string name = 3;
+    int32 avatar_num = 4;
 }
 
-message SetAliasResponse {
+message SetUserAccountSettingsResponse {
 }
 
-message GetAliasRequest {
+message GetUserAccountSettingsRequest {
     string user_id = 1;
 }
 
-message GetAliasResponse {
+message GetUserAccountSettingsResponse {
     string alias = 1;
+    string name = 2;
+    string email = 3;
+    int32 avatar_num = 4;
 }
 
 message DeleteUserRequest {

@@ -18,7 +18,7 @@
 <div class="grid h-screen w-full">
     <!-- Sidebar -->
     <aside 
-        class="fixed shadow-md inset-y-0 left-0 z-10 hidden md:flex h-[calc(100%-1rem)] flex-col bg-[#eeefec] backdrop-blur supports-[backdrop-filter]:bg-[#eeefec]/60 mx-2 my-2 rounded-xl transition-all duration-300 ease-in-out"
+        class="fixed shadow-md inset-y-0 left-0 z-10 hidden md:flex h-[calc(100%-1rem)] flex-col bg-[#f8f7f7] backdrop-blur supports-[backdrop-filter]:bg-[#f8f7f7]/60 mx-2 my-2 rounded-xl transition-all duration-300 ease-in-out"
         class:w-72={$sidebarExpanded}
         class:w-[70px]={!$sidebarExpanded}
         on:wheel={handleWheel}
@@ -77,7 +77,7 @@
                             variant="ghost" 
                             size="icon"
                             on:click={toggleSidebar}
-                            class="rounded-xl bg-[#eeefec] border shadow-sm pointer-events-auto" 
+                            class="rounded-xl bg-[#fbfbfb] border shadow-sm pointer-events-auto" 
                             aria-label={$sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
                             builders={[builder]}
                         >

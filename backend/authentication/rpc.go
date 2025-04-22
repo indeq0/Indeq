@@ -89,7 +89,7 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 	}
 	defer tx.Rollback()
 
-	id, encodedHash, name, alias, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
+	id, encodedHash, name, alias, avatarNum, err := getUserByEmail(ctx, tx, strings.ToLower(req.Email))
 	if err == sql.ErrNoRows {
 		// Even though the user doesn't exist we want to fake a comparison
 		dummyEncodedHash := fmt.Sprintf(
@@ -136,7 +136,7 @@ func (s *authServer) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Login
 		return nil, err
 	}
 
-	return &pb.LoginResponse{Token: tokenString, UserId: id, Name: name, Alias: alias}, nil
+	return &pb.LoginResponse{Token: tokenString, UserId: id, Name: name, Alias: alias, AvatarNum: int32(avatarNum)}, nil
 }
 
 // rpc(context, register request)
@@ -178,6 +178,55 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}
 
 	if existingUser != "" {
+
+		// link to google account here
+		print("User not created, trying to find existing user")
+
+		// check if userID
+		var userId string
+		var googleId string
+		var passwordHash sql.NullString
+		err = s.db.QueryRowContext(
+			ctx,
+			"SELECT id, google_id, password_hash FROM users WHERE email = $1",
+			strings.ToLower(req.Email), // Normalize email
+		).Scan(&userId, &googleId, &passwordHash)
+
+		if err != sql.ErrNoRows {
+
+			// Google ID exists without a password hash
+			if err == nil && googleId != "" && (passwordHash.String == "") {
+				tx, err := s.db.BeginTx(ctx, nil)
+				if err != nil {
+					return nil, fmt.Errorf("failed to begin transaction: %v", err)
+				}
+				defer tx.Rollback()
+
+				err = tx.QueryRowContext(
+					ctx,
+					"UPDATE users SET password_hash = $1 WHERE email = $2 RETURNING id",
+					passwordHash,
+					strings.ToLower(req.Email),
+				).Scan()
+				if err := tx.Commit(); err != nil {
+					return nil, fmt.Errorf("failed to commit transaction: %v", err)
+				}
+
+				var currentTime = time.Now()
+
+				token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+					"sub": userId,
+					"exp": currentTime.Add(24 * time.Hour).Unix(), // current 1 day expiration
+					"iat": currentTime.Unix(),
+					"nbf": currentTime.Unix(),
+				})
+
+				tokenString, err := token.SignedString(s.jwtSecret)
+
+				return &pb.RegisterResponse{Success: true, Error: "Linked to Existing Google Account", Token: tokenString}, nil
+			}
+		}
+
 		return &pb.RegisterResponse{
 			Success: false,
 			Error:   "Email already exists!",
@@ -466,7 +515,8 @@ func (s *authServer) VerifyOTP(ctx context.Context, req *pb.VerifyOTPRequest) (*
 
 		userId, err := createUser(ctx, tx, strings.ToLower(payload.Email), payload.HashedPassword, payload.Name)
 		if err != nil {
-			// if the query fails, return an error
+
+			// otherwise return an error
 			return &pb.VerifyOTPResponse{
 				Success: false,
 				Error:   "email already exists",
@@ -902,53 +952,69 @@ func (s *authServer) SignCSR(ctx context.Context, req *pb.SignCSRRequest) (*pb.S
 	}, nil
 }
 
-// rpc(context, set alias request)
-//   - takes a user id and an alias, and updates the user's alias in the database
+// rpc(context, set user account settings request)
+//   - takes a user id, name, alias, and avatar number, and updates the user's name, alias, and avatar in the database
 //   - returns an empty response on success, or error on failure
-func (s *authServer) SetAlias(ctx context.Context, req *pb.SetAliasRequest) (*pb.SetAliasResponse, error) {
+func (s *authServer) SetUserAccountSettings(ctx context.Context, req *pb.SetUserAccountSettingsRequest) (*pb.SetUserAccountSettingsResponse, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 	defer tx.Rollback()
 
-	email, passwordHash, name, _, err := getUserById(ctx, tx, req.UserId)
+	email, passwordHash, name, alias, avatarNum, err := getUserById(ctx, tx, req.UserId)
 	if err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 
-	_, err = updateUser(ctx, tx, req.UserId, email, passwordHash, name, req.Alias)
+	// perform updates on the existing values only if the values are not empty strings
+	if (req.Name != "") {
+		name = req.Name
+	}
+	if (req.Alias != "") {
+		alias = req.Alias
+	}
+	if (req.AvatarNum != 0) {
+		avatarNum = int(req.AvatarNum)
+	}
+
+	_, err = updateUser(ctx, tx, req.UserId, email, passwordHash, name, alias, avatarNum)
 	if err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return &pb.SetAliasResponse{}, err
+		return &pb.SetUserAccountSettingsResponse{}, err
 	}
 
-	return &pb.SetAliasResponse{}, nil
+	return &pb.SetUserAccountSettingsResponse{}, nil
 }
 
-// rpc(context, get alias request)
+// rpc(context, get user account settings request)
 //   - takes a user id and retrieves the user's alias from the database
 //   - returns the alias string on success, or error on failure
-func (s *authServer) GetAlias(ctx context.Context, req *pb.GetAliasRequest) (*pb.GetAliasResponse, error) {
+func (s *authServer) GetUserAccountSettings(ctx context.Context, req *pb.GetUserAccountSettingsRequest) (*pb.GetUserAccountSettingsResponse, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return &pb.GetAliasResponse{}, err
+		return &pb.GetUserAccountSettingsResponse{}, err
 	}
 	defer tx.Rollback()
 
-	_, _, _, alias, err := getUserById(ctx, tx, req.UserId)
+	email, _, name, alias, avatarNum, err := getUserById(ctx, tx, req.UserId)
 	if err != nil {
-		return &pb.GetAliasResponse{}, err
+		return &pb.GetUserAccountSettingsResponse{}, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return &pb.GetAliasResponse{}, err
+		return &pb.GetUserAccountSettingsResponse{}, err
 	}
 
-	return &pb.GetAliasResponse{Alias: alias}, nil
+	return &pb.GetUserAccountSettingsResponse{
+		Alias:   alias,
+		Name:    name,
+		Email:   email,
+		AvatarNum: int32(avatarNum),
+	}, nil
 }
 
 // rpc(context, delete account request)
