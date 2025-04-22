@@ -47,374 +47,374 @@ jobs:
       run: |
         protoc-gen-go --version || echo "protoc-gen-go not found"
 
-    - name: Generate .env Files
-      env:
-        AUTH_PORT: ${{ secrets.AUTH_PORT }}
-        DEV_PROD: ${{ secrets.DEV_PROD }} 
-        AUTH_ADDRESS: ${{ secrets.AUTH_ADDRESS }}
-        QUERY_PORT: ${{ secrets.QUERY_PORT }}
-        QUERY_ADDRESS: ${{ secrets.QUERY_ADDRESS }}
-        VECTOR_PORT: ${{ secrets.VECTOR_PORT }}
-        VECTOR_ADDRESS: ${{ secrets.VECTOR_ADDRESS }}
-        DESKTOP_ADDRESS: ${{ secrets.DESKTOP_ADDRESS }}
-        DESKTOP_PORT: ${{ secrets.DESKTOP_PORT }}
-        RETRIEVAL_ADDRESS: ${{ secrets.RETRIEVAL_ADDRESS }}
-        RETRIEVAL_PORT: ${{ secrets.RETRIEVAL_PORT }}
-        WAITLIST_ADDRESS: ${{ secrets.WAITLIST_ADDRESS }}
-        WAITLIST_PORT: ${{ secrets.WAITLIST_PORT }}
-        INTEGRATION_ADDRESS: ${{ secrets.INTEGRATION_ADDRESS }}
-        INTEGRATION_PORT: ${{ secrets.INTEGRATION_PORT }}
-        GATEWAY_ADDRESS: ${{ secrets.GATEWAY_ADDRESS }}
-        CRAWLING_PORT: ${{ secrets.CRAWLING_PORT }}
-        CRAWLING_ADDRESS: ${{ secrets.CRAWLING_ADDRESS }}
-        COUCHDB_ADDRESS: ${{ secrets.COUCHDB_ADDRESS }}
-        MQTT_ADDRESS: ${{ secrets.MQTT_ADDRESS }}
-        MQTT_PORT: ${{ secrets.MQTT_PORT }}
-        EMBEDDING_MODEL_NAME: ${{ secrets.EMBEDDING_MODEL_NAME }}
-        EMBEDDING_RERANKER: ${{ secrets.EMBEDDING_RERANKER }}
-        EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
-        EMBEDDING_ADDRESS: ${{ secrets.EMBEDDING_ADDRESS }}
-        EMBEDDING_MAX_WORKERS: ${{ secrets.EMBEDDING_MAX_WORKERS }}
-        EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT: ${{ secrets.EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT }}
-        CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS }}
-        CRAWLING_GMAIL_MAX_WORKERS: ${{ secrets.CRAWLING_GMAIL_MAX_WORKERS }}
-        CRAWLING_DRIVE_MAX_WORKERS: ${{ secrets.CRAWLING_DRIVE_MAX_WORKERS }}
-        CRAWLING_GOOGLEDOCS_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLEDOCS_MAX_WORKERS }}
-        CRAWLING_GOOGLESLIDES_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLESLIDES_MAX_WORKERS }}
-        CRAWLING_GOOGLEPDF_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLEPDF_MAX_WORKERS }}
-        CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS: ${{ secrets.CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS }}
-        VECTOR_BATCH_SIZE: ${{ secrets.VECTOR_BATCH_SIZE }}
-        VECTOR_BATCH_TIMEOUT: ${{ secrets.VECTOR_BATCH_TIMEOUT }}
-        QUERY_NUMBER_OF_SOURCES: ${{ secrets.QUERY_NUMBER_OF_SOURCES }}
-        QUERY_TTL: ${{ secrets.QUERY_TTL }}
-        QUERY_QUEUE_TTL: ${{ secrets.QUERY_QUEUE_TTL }}
-        QUERY_EXPANSION: ${{ secrets.QUERY_EXPANSION }}
-        QUERY_SUMMARY_UPPER_BOUND: ${{ secrets.QUERY_SUMMARY_UPPER_BOUND }}
-        QUERY_SUMMARY_LOWER_BOUND: ${{ secrets.QUERY_SUMMARY_LOWER_BOUND }}
-        QUERY_DEFAULT_MODEL: ${{ secrets.QUERY_DEFAULT_MODEL }}
-        RETRIEVAL_K_VAL: ${{ secrets.RETRIEVAL_K_VAL }}
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-        POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-        POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-        COUCHDB_USER: ${{ secrets.COUCHDB_USER }}
-        COUCHDB_PASSWORD: ${{ secrets.COUCHDB_PASSWORD }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        ARGON2_MEMORY: ${{ secrets.ARGON2_MEMORY }}
-        ARGON2_ITERATIONS: ${{ secrets.ARGON2_ITERATIONS }}
-        ARGON2_PARALLELISM: ${{ secrets.ARGON2_PARALLELISM }}
-        ARGON2_SALT_LENGTH: ${{ secrets.ARGON2_SALT_LENGTH }}
-        ARGON2_KEY_LENGTH: ${{ secrets.ARGON2_KEY_LENGTH }}
-        MIN_PASSWORD_LENGTH: ${{ secrets.MIN_PASSWORD_LENGTH }}
-        MAX_PASSWORD_LENGTH: ${{ secrets.MAX_PASSWORD_LENGTH }}
-        MAX_EMAIL_LENGTH: ${{ secrets.MAX_EMAIL_LENGTH }}
-        RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
-        RABBITMQ_DEFAULT_USER: ${{ secrets.RABBITMQ_DEFAULT_USER }}
-        RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
-        RABBITMQ_LOGS: ${{ secrets.RABBITMQ_LOGS }}
-        KAFKA_BROKER_ADDRESS: ${{ secrets.KAFKA_BROKER_ADDRESS }}
-        KAFKA_BROKER_ID: ${{ secrets.KAFKA_BROKER_ID }}
-        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${{ secrets.KAFKA_LISTENER_SECURITY_PROTOCOL_MAP }}
-        KAFKA_ADVERTISED_LISTENERS: ${{ secrets.KAFKA_ADVERTISED_LISTENERS }}
-        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${{ secrets.KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR }}
-        KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: ${{ secrets.KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS }}
-        KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${{ secrets.KAFKA_TRANSACTION_STATE_LOG_MIN_ISR }}
-        KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${{ secrets.KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR }}
-        KAFKA_PROCESS_ROLES: ${{ secrets.KAFKA_PROCESS_ROLES }}
-        KAFKA_NODE_ID: ${{ secrets.KAFKA_NODE_ID }}
-        KAFKA_CONTROLLER_QUORUM_VOTERS: ${{ secrets.KAFKA_CONTROLLER_QUORUM_VOTERS }}
-        KAFKA_LISTENERS: ${{ secrets.KAFKA_LISTENERS }}
-        KAFKA_INTER_BROKER_LISTENER_NAME: ${{ secrets.KAFKA_INTER_BROKER_LISTENER_NAME }}
-        KAFKA_CONTROLLER_LISTENER_NAMES: ${{ secrets.KAFKA_CONTROLLER_LISTENER_NAMES }}
-        CLUSTER_ID: ${{ secrets.CLUSTER_ID }}
-        KAFKA_LOG4J_ROOT_LOGLEVEL: ${{ secrets.KAFKA_LOG4J_ROOT_LOGLEVEL }}
-        KAFKA_LOG4J_LOGGERS: ${{ secrets.KAFKA_LOG4J_LOGGERS }}
-        OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY }}
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        LLM_MODEL: ${{ secrets.LLM_MODEL }}
-        ZILLIZ_ADDRESS: ${{ secrets.ZILLIZ_ADDRESS }}
-        ZILLIZ_API_KEY: ${{ secrets.ZILLIZ_API_KEY }}
-        VECTOR_DIMENSION: ${{ secrets.VECTOR_DIMENSION }}
-        GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-        GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-        GOOGLE_AUTH_URL: ${{ secrets.GOOGLE_AUTH_URL }}
-        GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
-        GOOGLE_SCOPES: ${{ secrets.GOOGLE_SCOPES }}
-        GOOGLE_SSO_CLIENT_ID: ${{ secrets.GOOGLE_SSO_CLIENT_ID }}
-        GOOGLE_SSO_CLIENT_SECRET: ${{ secrets.GOOGLE_SSO_CLIENT_SECRET }}
-        GOOGLE_SSO_REDIRECT_URI: ${{ secrets.GOOGLE_SSO_REDIRECT_URI }}
-        GOOGLE_SSO_SCOPES: ${{ secrets.GOOGLE_SSO_SCOPES }}
-        MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
-        MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
-        MICROSOFT_AUTH_URL: ${{ secrets.MICROSOFT_AUTH_URL }}
-        MICROSOFT_REDIRECT_URI: ${{ secrets.MICROSOFT_REDIRECT_URI }}
-        MICROSOFT_SCOPES: ${{ secrets.MICROSOFT_SCOPES }}
-        NOTION_CLIENT_ID: ${{ secrets.NOTION_CLIENT_ID }}
-        NOTION_CLIENT_SECRET: ${{ secrets.NOTION_CLIENT_SECRET }}
-        NOTION_REDIRECT_URI: ${{ secrets.NOTION_REDIRECT_URI }}
-        NOTION_AUTH_URL: ${{ secrets.NOTION_AUTH_URL }}
-        REDIS_ADDRESS: ${{ secrets.REDIS_ADDRESS }}
-        REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
-        ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-        CA_CRT: ${{ secrets.CA_CRT }}
-        CA_KEY: ${{ secrets.CA_KEY }}
-        QUERY_CRT: ${{ secrets.QUERY_CRT }}
-        QUERY_KEY: ${{ secrets.QUERY_KEY }}
-        AUTH_CRT: ${{ secrets.AUTH_CRT }}
-        AUTH_KEY: ${{ secrets.AUTH_KEY }}
-        VECTOR_CRT: ${{ secrets.VECTOR_CRT }}
-        VECTOR_KEY: ${{ secrets.VECTOR_KEY }}
-        GATEWAY_CRT: ${{ secrets.GATEWAY_CRT }}
-        GATEWAY_KEY: ${{ secrets.GATEWAY_KEY }}
-        DESKTOP_CRT: ${{ secrets.DESKTOP_CRT }}
-        DESKTOP_KEY: ${{ secrets.DESKTOP_KEY }}
-        EMBEDDING_CRT: ${{ secrets.EMBEDDING_CRT }}
-        EMBEDDING_KEY: ${{ secrets.EMBEDDING_KEY }}
-        RETRIEVAL_CRT: ${{ secrets.RETRIEVAL_CRT }}
-        RETRIEVAL_KEY: ${{ secrets.RETRIEVAL_KEY }}
-        MQTT_CRT: ${{ secrets.MQTT_CRT }}
-        MQTT_KEY: ${{ secrets.MQTT_KEY }}
-        WAITLIST_CRT: ${{ secrets.WAITLIST_CRT }}
-        WAITLIST_KEY: ${{ secrets.WAITLIST_KEY }}
-        INTEGRATION_CRT: ${{ secrets.INTEGRATION_CRT }}
-        INTEGRATION_KEY: ${{ secrets.INTEGRATION_KEY }}
-        CRAWLING_CRT: ${{ secrets.CRAWLING_CRT }}
-        CRAWLING_KEY: ${{ secrets.CRAWLING_KEY }}
-        ALLOWED_CLIENT_IP: ${{ secrets.ALLOWED_CLIENT_IP }}
-        SMTP_FROM: ${{ secrets.SMTP_FROM }}
-        SMTP_USER: ${{ secrets.SMTP_USER }}
-        SMTP_PASS: ${{ secrets.SMTP_PASS }}
-        SMTP_HOST: ${{ secrets.SMTP_HOST }}
-        SMTP_PORT: ${{ secrets.SMTP_PORT }}
-        EC2_KEY_PAIR: ${{ secrets.EC2_KEY_PAIR }}
-        EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
-      run: |
-        echo "AUTH_PORT=$AUTH_PORT" > .env
-        echo "DEV_PROD=$DEV_PROD" >> .env
-        echo "AUTH_ADDRESS=$AUTH_ADDRESS" >> .env
-        echo "QUERY_PORT=$QUERY_PORT" >> .env
-        echo "QUERY_ADDRESS=$QUERY_ADDRESS" >> .env
-        echo "VECTOR_PORT=$VECTOR_PORT" >> .env
-        echo "VECTOR_ADDRESS=$VECTOR_ADDRESS" >> .env
-        echo "DESKTOP_ADDRESS=$DESKTOP_ADDRESS" >> .env
-        echo "DESKTOP_PORT=$DESKTOP_PORT" >> .env
-        echo "RETRIEVAL_ADDRESS=$RETRIEVAL_ADDRESS" >> .env
-        echo "RETRIEVAL_PORT=$RETRIEVAL_PORT" >> .env
-        echo "WAITLIST_ADDRESS=$WAITLIST_ADDRESS" >> .env
-        echo "WAITLIST_PORT=$WAITLIST_PORT" >> .env
-        echo "INTEGRATION_ADDRESS=$INTEGRATION_ADDRESS" >> .env
-        echo "INTEGRATION_PORT=$INTEGRATION_PORT" >> .env
-        echo "GATEWAY_ADDRESS=$GATEWAY_ADDRESS" >> .env
-        echo "CRAWLING_PORT=$CRAWLING_PORT" >> .env
-        echo "CRAWLING_ADDRESS=$CRAWLING_ADDRESS" >> .env
-        echo "COUCHDB_ADDRESS=$COUCHDB_ADDRESS" >> .env
-        echo "MQTT_ADDRESS=$MQTT_ADDRESS" >> .env
-        echo "MQTT_PORT=$MQTT_PORT" >> .env
-        echo "EMBEDDING_MODEL_NAME=$EMBEDDING_MODEL_NAME" >> .env
-        echo "EMBEDDING_RERANKER=$EMBEDDING_RERANKER" >> .env
-        echo "EMBEDDING_PORT=$EMBEDDING_PORT" >> .env
-        echo "EMBEDDING_ADDRESS=$EMBEDDING_ADDRESS" >> .env
-        echo "EMBEDDING_MAX_WORKERS=$EMBEDDING_MAX_WORKERS" >> .env
-        echo "EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT=$EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT" >> .env
-        echo "CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS=$CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS" >> .env
-        echo "CRAWLING_GMAIL_MAX_WORKERS=$CRAWLING_GMAIL_MAX_WORKERS" >> .env
-        echo "CRAWLING_DRIVE_MAX_WORKERS=$CRAWLING_DRIVE_MAX_WORKERS" >> .env
-        echo "CRAWLING_GOOGLEDOCS_MAX_WORKERS=$CRAWLING_GOOGLEDOCS_MAX_WORKERS" >> .env
-        echo "CRAWLING_GOOGLESLIDES_MAX_WORKERS=$CRAWLING_GOOGLESLIDES_MAX_WORKERS" >> .env
-        echo "CRAWLING_GOOGLEPDF_MAX_WORKERS=$CRAWLING_GOOGLEPDF_MAX_WORKERS" >> .env
-        echo "CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS=$CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS" >> .env
-        echo "VECTOR_BATCH_SIZE=$VECTOR_BATCH_SIZE" >> .env
-        echo "VECTOR_BATCH_TIMEOUT=$VECTOR_BATCH_TIMEOUT" >> .env
-        echo "QUERY_NUMBER_OF_SOURCES=$QUERY_NUMBER_OF_SOURCES" >> .env
-        echo "QUERY_TTL=$QUERY_TTL" >> .env
-        echo "QUERY_QUEUE_TTL=$QUERY_QUEUE_TTL" >> .env
-        echo "QUERY_EXPANSION=$QUERY_EXPANSION" >> .env
-        echo "QUERY_SUMMARY_UPPER_BOUND=$QUERY_SUMMARY_UPPER_BOUND" >> .env
-        echo "QUERY_SUMMARY_LOWER_BOUND=$QUERY_SUMMARY_LOWER_BOUND" >> .env
-        echo "QUERY_DEFAULT_MODEL=$QUERY_DEFAULT_MODEL" >> .env
-        echo "RETRIEVAL_K_VAL=$RETRIEVAL_K_VAL" >> .env
-        echo "DATABASE_URL=$DATABASE_URL" >> .env
-        echo "POSTGRES_USER=$POSTGRES_USER" >> .env
-        echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
-        echo "POSTGRES_DB=$POSTGRES_DB" >> .env
-        echo "COUCHDB_USER=$COUCHDB_USER" >> .env
-        echo "COUCHDB_PASSWORD=$COUCHDB_PASSWORD" >> .env
-        echo "JWT_SECRET=$JWT_SECRET" >> .env
-        echo "ARGON2_MEMORY=$ARGON2_MEMORY" >> .env
-        echo "ARGON2_ITERATIONS=$ARGON2_ITERATIONS" >> .env
-        echo "ARGON2_PARALLELISM=$ARGON2_PARALLELISM" >> .env
-        echo "ARGON2_SALT_LENGTH=$ARGON2_SALT_LENGTH" >> .env
-        echo "ARGON2_KEY_LENGTH=$ARGON2_KEY_LENGTH" >> .env
-        echo "MIN_PASSWORD_LENGTH=$MIN_PASSWORD_LENGTH" >> .env
-        echo "MAX_PASSWORD_LENGTH=$MAX_PASSWORD_LENGTH" >> .env
-        echo "MAX_EMAIL_LENGTH=$MAX_EMAIL_LENGTH" >> .env
-        echo "RABBITMQ_URL=$RABBITMQ_URL" >> .env
-        echo "RABBITMQ_DEFAULT_USER=$RABBITMQ_DEFAULT_USER" >> .env
-        echo "RABBITMQ_DEFAULT_PASS=$RABBITMQ_DEFAULT_PASS" >> .env
-        echo "RABBITMQ_LOGS=$RABBITMQ_LOGS" >> .env
-        echo "KAFKA_BROKER_ADDRESS=$KAFKA_BROKER_ADDRESS" >> .env
-        echo "KAFKA_BROKER_ID=$KAFKA_BROKER_ID" >> .env
-        echo "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_LISTENER_SECURITY_PROTOCOL_MAP" >> .env
-        echo "KAFKA_ADVERTISED_LISTENERS=$KAFKA_ADVERTISED_LISTENERS" >> .env
-        echo "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=$KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR" >> .env
-        echo "KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=$KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS" >> .env
-        echo "KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=$KAFKA_TRANSACTION_STATE_LOG_MIN_ISR" >> .env
-        echo "KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=$KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR" >> .env
-        echo "KAFKA_PROCESS_ROLES=$KAFKA_PROCESS_ROLES" >> .env
-        echo "KAFKA_NODE_ID=$KAFKA_NODE_ID" >> .env
-        echo "KAFKA_CONTROLLER_QUORUM_VOTERS=$KAFKA_CONTROLLER_QUORUM_VOTERS" >> .env
-        echo "KAFKA_LISTENERS=$KAFKA_LISTENERS" >> .env
-        echo "KAFKA_INTER_BROKER_LISTENER_NAME=$KAFKA_INTER_BROKER_LISTENER_NAME" >> .env
-        echo "KAFKA_CONTROLLER_LISTENER_NAMES=$KAFKA_CONTROLLER_LISTENER_NAMES" >> .env
-        echo "CLUSTER_ID=$CLUSTER_ID" >> .env
-        echo "KAFKA_LOG4J_ROOT_LOGLEVEL=$KAFKA_LOG4J_ROOT_LOGLEVEL" >> .env
-        echo "KAFKA_LOG4J_LOGGERS=$KAFKA_LOG4J_LOGGERS" >> .env
-        echo "OLLAMA_URL=$OLLAMA_URL" >> .env
-        echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env
-        echo "DEEPINFRA_API_KEY=$DEEPINFRA_API_KEY" >> .env
-        echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
-        echo "LLM_MODEL=$LLM_MODEL" >> .env
-        echo "ZILLIZ_ADDRESS=$ZILLIZ_ADDRESS" >> .env
-        echo "ZILLIZ_API_KEY=$ZILLIZ_API_KEY" >> .env
-        echo "VECTOR_DIMENSION=$VECTOR_DIMENSION" >> .env
-        echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env
-        echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env
-        echo "GOOGLE_AUTH_URL=$GOOGLE_AUTH_URL" >> .env
-        echo "GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI" >> .env
-        echo "GOOGLE_SCOPES=$GOOGLE_SCOPES" >> .env
-        echo "GOOGLE_SSO_CLIENT_ID=$GOOGLE_SSO_CLIENT_ID" >> .env
-        echo "GOOGLE_SSO_CLIENT_SECRET=$GOOGLE_SSO_CLIENT_SECRET" >> .env
-        echo "GOOGLE_SSO_REDIRECT_URI=$GOOGLE_SSO_REDIRECT_URI" >> .env
-        echo "GOOGLE_SSO_SCOPES=$GOOGLE_SSO_SCOPES" >> .env
-        echo "MICROSOFT_CLIENT_ID=$MICROSOFT_CLIENT_ID" >> .env
-        echo "MICROSOFT_CLIENT_SECRET=$MICROSOFT_CLIENT_SECRET" >> .env
-        echo "MICROSOFT_AUTH_URL=$MICROSOFT_AUTH_URL" >> .env
-        echo "MICROSOFT_REDIRECT_URI=$MICROSOFT_REDIRECT_URI" >> .env
-        echo "MICROSOFT_SCOPES=$MICROSOFT_SCOPES" >> .env
-        echo "NOTION_CLIENT_ID=$NOTION_CLIENT_ID" >> .env
-        echo "NOTION_CLIENT_SECRET=$NOTION_CLIENT_SECRET" >> .env
-        echo "NOTION_REDIRECT_URI=$NOTION_REDIRECT_URI" >> .env
-        echo "NOTION_AUTH_URL=$NOTION_AUTH_URL" >> .env
-        echo "REDIS_ADDRESS=$REDIS_ADDRESS" >> .env
-        echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> .env
-        echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env
-        echo "CA_CRT=$CA_CRT" >> .env
-        echo "CA_KEY=$CA_KEY" >> .env
-        echo "QUERY_CRT=$QUERY_CRT" >> .env
-        echo "QUERY_KEY=$QUERY_KEY" >> .env
-        echo "AUTH_CRT=$AUTH_CRT" >> .env
-        echo "AUTH_KEY=$AUTH_KEY" >> .env
-        echo "VECTOR_CRT=$VECTOR_CRT" >> .env
-        echo "VECTOR_KEY=$VECTOR_KEY" >> .env
-        echo "GATEWAY_CRT=$GATEWAY_CRT" >> .env
-        echo "GATEWAY_KEY=$GATEWAY_KEY" >> .env
-        echo "DESKTOP_CRT=$DESKTOP_CRT" >> .env
-        echo "DESKTOP_KEY=$DESKTOP_KEY" >> .env
-        echo "EMBEDDING_CRT=$EMBEDDING_CRT" >> .env
-        echo "EMBEDDING_KEY=$EMBEDDING_KEY" >> .env
-        echo "RETRIEVAL_CRT=$RETRIEVAL_CRT" >> .env
-        echo "RETRIEVAL_KEY=$RETRIEVAL_KEY" >> .env
-        echo "MQTT_CRT=$MQTT_CRT" >> .env
-        echo "MQTT_KEY=$MQTT_KEY" >> .env
-        echo "WAITLIST_CRT=$WAITLIST_CRT" >> .env
-        echo "WAITLIST_KEY=$WAITLIST_KEY" >> .env
-        echo "INTEGRATION_CRT=$INTEGRATION_CRT" >> .env
-        echo "INTEGRATION_KEY=$INTEGRATION_KEY" >> .env
-        echo "CRAWLING_CRT=$CRAWLING_CRT" >> .env
-        echo "CRAWLING_KEY=$CRAWLING_KEY" >> .env
-        echo "ALLOWED_CLIENT_IP=$ALLOWED_CLIENT_IP" >> .env
-        echo "SMTP_FROM=$SMTP_FROM" >> .env
-        echo "SMTP_USER=$SMTP_USER" >> .env
-        echo "SMTP_PASS=$SMTP_PASS" >> .env
-        echo "SMTP_HOST=$SMTP_HOST" >> .env
-        echo "SMTP_PORT=$SMTP_PORT" >> .env
-        echo "EC2_KEY_PAIR=$EC2_KEY_PAIR" >> .env
-        echo "EC2_PUBLIC_IP=$EC2_PUBLIC_IP" >> .env
+    # - name: Generate .env Files
+    #   env:
+    #     AUTH_PORT: ${{ secrets.AUTH_PORT }}
+    #     DEV_PROD: ${{ secrets.DEV_PROD }} 
+    #     AUTH_ADDRESS: ${{ secrets.AUTH_ADDRESS }}
+    #     QUERY_PORT: ${{ secrets.QUERY_PORT }}
+    #     QUERY_ADDRESS: ${{ secrets.QUERY_ADDRESS }}
+    #     VECTOR_PORT: ${{ secrets.VECTOR_PORT }}
+    #     VECTOR_ADDRESS: ${{ secrets.VECTOR_ADDRESS }}
+    #     DESKTOP_ADDRESS: ${{ secrets.DESKTOP_ADDRESS }}
+    #     DESKTOP_PORT: ${{ secrets.DESKTOP_PORT }}
+    #     RETRIEVAL_ADDRESS: ${{ secrets.RETRIEVAL_ADDRESS }}
+    #     RETRIEVAL_PORT: ${{ secrets.RETRIEVAL_PORT }}
+    #     WAITLIST_ADDRESS: ${{ secrets.WAITLIST_ADDRESS }}
+    #     WAITLIST_PORT: ${{ secrets.WAITLIST_PORT }}
+    #     INTEGRATION_ADDRESS: ${{ secrets.INTEGRATION_ADDRESS }}
+    #     INTEGRATION_PORT: ${{ secrets.INTEGRATION_PORT }}
+    #     GATEWAY_ADDRESS: ${{ secrets.GATEWAY_ADDRESS }}
+    #     CRAWLING_PORT: ${{ secrets.CRAWLING_PORT }}
+    #     CRAWLING_ADDRESS: ${{ secrets.CRAWLING_ADDRESS }}
+    #     COUCHDB_ADDRESS: ${{ secrets.COUCHDB_ADDRESS }}
+    #     MQTT_ADDRESS: ${{ secrets.MQTT_ADDRESS }}
+    #     MQTT_PORT: ${{ secrets.MQTT_PORT }}
+    #     EMBEDDING_MODEL_NAME: ${{ secrets.EMBEDDING_MODEL_NAME }}
+    #     EMBEDDING_RERANKER: ${{ secrets.EMBEDDING_RERANKER }}
+    #     EMBEDDING_PORT: ${{ secrets.EMBEDDING_PORT }}
+    #     EMBEDDING_ADDRESS: ${{ secrets.EMBEDDING_ADDRESS }}
+    #     EMBEDDING_MAX_WORKERS: ${{ secrets.EMBEDDING_MAX_WORKERS }}
+    #     EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT: ${{ secrets.EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT }}
+    #     CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS }}
+    #     CRAWLING_GMAIL_MAX_WORKERS: ${{ secrets.CRAWLING_GMAIL_MAX_WORKERS }}
+    #     CRAWLING_DRIVE_MAX_WORKERS: ${{ secrets.CRAWLING_DRIVE_MAX_WORKERS }}
+    #     CRAWLING_GOOGLEDOCS_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLEDOCS_MAX_WORKERS }}
+    #     CRAWLING_GOOGLESLIDES_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLESLIDES_MAX_WORKERS }}
+    #     CRAWLING_GOOGLEPDF_MAX_WORKERS: ${{ secrets.CRAWLING_GOOGLEPDF_MAX_WORKERS }}
+    #     CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS: ${{ secrets.CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS }}
+    #     VECTOR_BATCH_SIZE: ${{ secrets.VECTOR_BATCH_SIZE }}
+    #     VECTOR_BATCH_TIMEOUT: ${{ secrets.VECTOR_BATCH_TIMEOUT }}
+    #     QUERY_NUMBER_OF_SOURCES: ${{ secrets.QUERY_NUMBER_OF_SOURCES }}
+    #     QUERY_TTL: ${{ secrets.QUERY_TTL }}
+    #     QUERY_QUEUE_TTL: ${{ secrets.QUERY_QUEUE_TTL }}
+    #     QUERY_EXPANSION: ${{ secrets.QUERY_EXPANSION }}
+    #     QUERY_SUMMARY_UPPER_BOUND: ${{ secrets.QUERY_SUMMARY_UPPER_BOUND }}
+    #     QUERY_SUMMARY_LOWER_BOUND: ${{ secrets.QUERY_SUMMARY_LOWER_BOUND }}
+    #     QUERY_DEFAULT_MODEL: ${{ secrets.QUERY_DEFAULT_MODEL }}
+    #     RETRIEVAL_K_VAL: ${{ secrets.RETRIEVAL_K_VAL }}
+    #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    #     POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+    #     POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+    #     POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+    #     COUCHDB_USER: ${{ secrets.COUCHDB_USER }}
+    #     COUCHDB_PASSWORD: ${{ secrets.COUCHDB_PASSWORD }}
+    #     JWT_SECRET: ${{ secrets.JWT_SECRET }}
+    #     ARGON2_MEMORY: ${{ secrets.ARGON2_MEMORY }}
+    #     ARGON2_ITERATIONS: ${{ secrets.ARGON2_ITERATIONS }}
+    #     ARGON2_PARALLELISM: ${{ secrets.ARGON2_PARALLELISM }}
+    #     ARGON2_SALT_LENGTH: ${{ secrets.ARGON2_SALT_LENGTH }}
+    #     ARGON2_KEY_LENGTH: ${{ secrets.ARGON2_KEY_LENGTH }}
+    #     MIN_PASSWORD_LENGTH: ${{ secrets.MIN_PASSWORD_LENGTH }}
+    #     MAX_PASSWORD_LENGTH: ${{ secrets.MAX_PASSWORD_LENGTH }}
+    #     MAX_EMAIL_LENGTH: ${{ secrets.MAX_EMAIL_LENGTH }}
+    #     RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
+    #     RABBITMQ_DEFAULT_USER: ${{ secrets.RABBITMQ_DEFAULT_USER }}
+    #     RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+    #     RABBITMQ_LOGS: ${{ secrets.RABBITMQ_LOGS }}
+    #     KAFKA_BROKER_ADDRESS: ${{ secrets.KAFKA_BROKER_ADDRESS }}
+    #     KAFKA_BROKER_ID: ${{ secrets.KAFKA_BROKER_ID }}
+    #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${{ secrets.KAFKA_LISTENER_SECURITY_PROTOCOL_MAP }}
+    #     KAFKA_ADVERTISED_LISTENERS: ${{ secrets.KAFKA_ADVERTISED_LISTENERS }}
+    #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${{ secrets.KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR }}
+    #     KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: ${{ secrets.KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS }}
+    #     KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${{ secrets.KAFKA_TRANSACTION_STATE_LOG_MIN_ISR }}
+    #     KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${{ secrets.KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR }}
+    #     KAFKA_PROCESS_ROLES: ${{ secrets.KAFKA_PROCESS_ROLES }}
+    #     KAFKA_NODE_ID: ${{ secrets.KAFKA_NODE_ID }}
+    #     KAFKA_CONTROLLER_QUORUM_VOTERS: ${{ secrets.KAFKA_CONTROLLER_QUORUM_VOTERS }}
+    #     KAFKA_LISTENERS: ${{ secrets.KAFKA_LISTENERS }}
+    #     KAFKA_INTER_BROKER_LISTENER_NAME: ${{ secrets.KAFKA_INTER_BROKER_LISTENER_NAME }}
+    #     KAFKA_CONTROLLER_LISTENER_NAMES: ${{ secrets.KAFKA_CONTROLLER_LISTENER_NAMES }}
+    #     CLUSTER_ID: ${{ secrets.CLUSTER_ID }}
+    #     KAFKA_LOG4J_ROOT_LOGLEVEL: ${{ secrets.KAFKA_LOG4J_ROOT_LOGLEVEL }}
+    #     KAFKA_LOG4J_LOGGERS: ${{ secrets.KAFKA_LOG4J_LOGGERS }}
+    #     OLLAMA_URL: ${{ secrets.OLLAMA_URL }}
+    #     GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    #     DEEPINFRA_API_KEY: ${{ secrets.DEEPINFRA_API_KEY }}
+    #     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    #     LLM_MODEL: ${{ secrets.LLM_MODEL }}
+    #     ZILLIZ_ADDRESS: ${{ secrets.ZILLIZ_ADDRESS }}
+    #     ZILLIZ_API_KEY: ${{ secrets.ZILLIZ_API_KEY }}
+    #     VECTOR_DIMENSION: ${{ secrets.VECTOR_DIMENSION }}
+    #     GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+    #     GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+    #     GOOGLE_AUTH_URL: ${{ secrets.GOOGLE_AUTH_URL }}
+    #     GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI }}
+    #     GOOGLE_SCOPES: ${{ secrets.GOOGLE_SCOPES }}
+    #     GOOGLE_SSO_CLIENT_ID: ${{ secrets.GOOGLE_SSO_CLIENT_ID }}
+    #     GOOGLE_SSO_CLIENT_SECRET: ${{ secrets.GOOGLE_SSO_CLIENT_SECRET }}
+    #     GOOGLE_SSO_REDIRECT_URI: ${{ secrets.GOOGLE_SSO_REDIRECT_URI }}
+    #     GOOGLE_SSO_SCOPES: ${{ secrets.GOOGLE_SSO_SCOPES }}
+    #     MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
+    #     MICROSOFT_CLIENT_SECRET: ${{ secrets.MICROSOFT_CLIENT_SECRET }}
+    #     MICROSOFT_AUTH_URL: ${{ secrets.MICROSOFT_AUTH_URL }}
+    #     MICROSOFT_REDIRECT_URI: ${{ secrets.MICROSOFT_REDIRECT_URI }}
+    #     MICROSOFT_SCOPES: ${{ secrets.MICROSOFT_SCOPES }}
+    #     NOTION_CLIENT_ID: ${{ secrets.NOTION_CLIENT_ID }}
+    #     NOTION_CLIENT_SECRET: ${{ secrets.NOTION_CLIENT_SECRET }}
+    #     NOTION_REDIRECT_URI: ${{ secrets.NOTION_REDIRECT_URI }}
+    #     NOTION_AUTH_URL: ${{ secrets.NOTION_AUTH_URL }}
+    #     REDIS_ADDRESS: ${{ secrets.REDIS_ADDRESS }}
+    #     REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+    #     ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+    #     CA_CRT: ${{ secrets.CA_CRT }}
+    #     CA_KEY: ${{ secrets.CA_KEY }}
+    #     QUERY_CRT: ${{ secrets.QUERY_CRT }}
+    #     QUERY_KEY: ${{ secrets.QUERY_KEY }}
+    #     AUTH_CRT: ${{ secrets.AUTH_CRT }}
+    #     AUTH_KEY: ${{ secrets.AUTH_KEY }}
+    #     VECTOR_CRT: ${{ secrets.VECTOR_CRT }}
+    #     VECTOR_KEY: ${{ secrets.VECTOR_KEY }}
+    #     GATEWAY_CRT: ${{ secrets.GATEWAY_CRT }}
+    #     GATEWAY_KEY: ${{ secrets.GATEWAY_KEY }}
+    #     DESKTOP_CRT: ${{ secrets.DESKTOP_CRT }}
+    #     DESKTOP_KEY: ${{ secrets.DESKTOP_KEY }}
+    #     EMBEDDING_CRT: ${{ secrets.EMBEDDING_CRT }}
+    #     EMBEDDING_KEY: ${{ secrets.EMBEDDING_KEY }}
+    #     RETRIEVAL_CRT: ${{ secrets.RETRIEVAL_CRT }}
+    #     RETRIEVAL_KEY: ${{ secrets.RETRIEVAL_KEY }}
+    #     MQTT_CRT: ${{ secrets.MQTT_CRT }}
+    #     MQTT_KEY: ${{ secrets.MQTT_KEY }}
+    #     WAITLIST_CRT: ${{ secrets.WAITLIST_CRT }}
+    #     WAITLIST_KEY: ${{ secrets.WAITLIST_KEY }}
+    #     INTEGRATION_CRT: ${{ secrets.INTEGRATION_CRT }}
+    #     INTEGRATION_KEY: ${{ secrets.INTEGRATION_KEY }}
+    #     CRAWLING_CRT: ${{ secrets.CRAWLING_CRT }}
+    #     CRAWLING_KEY: ${{ secrets.CRAWLING_KEY }}
+    #     ALLOWED_CLIENT_IP: ${{ secrets.ALLOWED_CLIENT_IP }}
+    #     SMTP_FROM: ${{ secrets.SMTP_FROM }}
+    #     SMTP_USER: ${{ secrets.SMTP_USER }}
+    #     SMTP_PASS: ${{ secrets.SMTP_PASS }}
+    #     SMTP_HOST: ${{ secrets.SMTP_HOST }}
+    #     SMTP_PORT: ${{ secrets.SMTP_PORT }}
+    #     EC2_KEY_PAIR: ${{ secrets.EC2_KEY_PAIR }}
+    #     EC2_PUBLIC_IP: ${{ secrets.EC2_PUBLIC_IP }}
+    #   run: |
+    #     echo "AUTH_PORT=$AUTH_PORT" > .env
+    #     echo "DEV_PROD=$DEV_PROD" >> .env
+    #     echo "AUTH_ADDRESS=$AUTH_ADDRESS" >> .env
+    #     echo "QUERY_PORT=$QUERY_PORT" >> .env
+    #     echo "QUERY_ADDRESS=$QUERY_ADDRESS" >> .env
+    #     echo "VECTOR_PORT=$VECTOR_PORT" >> .env
+    #     echo "VECTOR_ADDRESS=$VECTOR_ADDRESS" >> .env
+    #     echo "DESKTOP_ADDRESS=$DESKTOP_ADDRESS" >> .env
+    #     echo "DESKTOP_PORT=$DESKTOP_PORT" >> .env
+    #     echo "RETRIEVAL_ADDRESS=$RETRIEVAL_ADDRESS" >> .env
+    #     echo "RETRIEVAL_PORT=$RETRIEVAL_PORT" >> .env
+    #     echo "WAITLIST_ADDRESS=$WAITLIST_ADDRESS" >> .env
+    #     echo "WAITLIST_PORT=$WAITLIST_PORT" >> .env
+    #     echo "INTEGRATION_ADDRESS=$INTEGRATION_ADDRESS" >> .env
+    #     echo "INTEGRATION_PORT=$INTEGRATION_PORT" >> .env
+    #     echo "GATEWAY_ADDRESS=$GATEWAY_ADDRESS" >> .env
+    #     echo "CRAWLING_PORT=$CRAWLING_PORT" >> .env
+    #     echo "CRAWLING_ADDRESS=$CRAWLING_ADDRESS" >> .env
+    #     echo "COUCHDB_ADDRESS=$COUCHDB_ADDRESS" >> .env
+    #     echo "MQTT_ADDRESS=$MQTT_ADDRESS" >> .env
+    #     echo "MQTT_PORT=$MQTT_PORT" >> .env
+    #     echo "EMBEDDING_MODEL_NAME=$EMBEDDING_MODEL_NAME" >> .env
+    #     echo "EMBEDDING_RERANKER=$EMBEDDING_RERANKER" >> .env
+    #     echo "EMBEDDING_PORT=$EMBEDDING_PORT" >> .env
+    #     echo "EMBEDDING_ADDRESS=$EMBEDDING_ADDRESS" >> .env
+    #     echo "EMBEDDING_MAX_WORKERS=$EMBEDDING_MAX_WORKERS" >> .env
+    #     echo "EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT=$EMBEDDING_GRACEFUL_SHUTDOWN_TIMEOUT" >> .env
+    #     echo "CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS=$CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS" >> .env
+    #     echo "CRAWLING_GMAIL_MAX_WORKERS=$CRAWLING_GMAIL_MAX_WORKERS" >> .env
+    #     echo "CRAWLING_DRIVE_MAX_WORKERS=$CRAWLING_DRIVE_MAX_WORKERS" >> .env
+    #     echo "CRAWLING_GOOGLEDOCS_MAX_WORKERS=$CRAWLING_GOOGLEDOCS_MAX_WORKERS" >> .env
+    #     echo "CRAWLING_GOOGLESLIDES_MAX_WORKERS=$CRAWLING_GOOGLESLIDES_MAX_WORKERS" >> .env
+    #     echo "CRAWLING_GOOGLEPDF_MAX_WORKERS=$CRAWLING_GOOGLEPDF_MAX_WORKERS" >> .env
+    #     echo "CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS=$CRAWLING_MICROSOFT_RETRIVAL_MAX_WORKERS" >> .env
+    #     echo "VECTOR_BATCH_SIZE=$VECTOR_BATCH_SIZE" >> .env
+    #     echo "VECTOR_BATCH_TIMEOUT=$VECTOR_BATCH_TIMEOUT" >> .env
+    #     echo "QUERY_NUMBER_OF_SOURCES=$QUERY_NUMBER_OF_SOURCES" >> .env
+    #     echo "QUERY_TTL=$QUERY_TTL" >> .env
+    #     echo "QUERY_QUEUE_TTL=$QUERY_QUEUE_TTL" >> .env
+    #     echo "QUERY_EXPANSION=$QUERY_EXPANSION" >> .env
+    #     echo "QUERY_SUMMARY_UPPER_BOUND=$QUERY_SUMMARY_UPPER_BOUND" >> .env
+    #     echo "QUERY_SUMMARY_LOWER_BOUND=$QUERY_SUMMARY_LOWER_BOUND" >> .env
+    #     echo "QUERY_DEFAULT_MODEL=$QUERY_DEFAULT_MODEL" >> .env
+    #     echo "RETRIEVAL_K_VAL=$RETRIEVAL_K_VAL" >> .env
+    #     echo "DATABASE_URL=$DATABASE_URL" >> .env
+    #     echo "POSTGRES_USER=$POSTGRES_USER" >> .env
+    #     echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+    #     echo "POSTGRES_DB=$POSTGRES_DB" >> .env
+    #     echo "COUCHDB_USER=$COUCHDB_USER" >> .env
+    #     echo "COUCHDB_PASSWORD=$COUCHDB_PASSWORD" >> .env
+    #     echo "JWT_SECRET=$JWT_SECRET" >> .env
+    #     echo "ARGON2_MEMORY=$ARGON2_MEMORY" >> .env
+    #     echo "ARGON2_ITERATIONS=$ARGON2_ITERATIONS" >> .env
+    #     echo "ARGON2_PARALLELISM=$ARGON2_PARALLELISM" >> .env
+    #     echo "ARGON2_SALT_LENGTH=$ARGON2_SALT_LENGTH" >> .env
+    #     echo "ARGON2_KEY_LENGTH=$ARGON2_KEY_LENGTH" >> .env
+    #     echo "MIN_PASSWORD_LENGTH=$MIN_PASSWORD_LENGTH" >> .env
+    #     echo "MAX_PASSWORD_LENGTH=$MAX_PASSWORD_LENGTH" >> .env
+    #     echo "MAX_EMAIL_LENGTH=$MAX_EMAIL_LENGTH" >> .env
+    #     echo "RABBITMQ_URL=$RABBITMQ_URL" >> .env
+    #     echo "RABBITMQ_DEFAULT_USER=$RABBITMQ_DEFAULT_USER" >> .env
+    #     echo "RABBITMQ_DEFAULT_PASS=$RABBITMQ_DEFAULT_PASS" >> .env
+    #     echo "RABBITMQ_LOGS=$RABBITMQ_LOGS" >> .env
+    #     echo "KAFKA_BROKER_ADDRESS=$KAFKA_BROKER_ADDRESS" >> .env
+    #     echo "KAFKA_BROKER_ID=$KAFKA_BROKER_ID" >> .env
+    #     echo "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_LISTENER_SECURITY_PROTOCOL_MAP" >> .env
+    #     echo "KAFKA_ADVERTISED_LISTENERS=$KAFKA_ADVERTISED_LISTENERS" >> .env
+    #     echo "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=$KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR" >> .env
+    #     echo "KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=$KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS" >> .env
+    #     echo "KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=$KAFKA_TRANSACTION_STATE_LOG_MIN_ISR" >> .env
+    #     echo "KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=$KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR" >> .env
+    #     echo "KAFKA_PROCESS_ROLES=$KAFKA_PROCESS_ROLES" >> .env
+    #     echo "KAFKA_NODE_ID=$KAFKA_NODE_ID" >> .env
+    #     echo "KAFKA_CONTROLLER_QUORUM_VOTERS=$KAFKA_CONTROLLER_QUORUM_VOTERS" >> .env
+    #     echo "KAFKA_LISTENERS=$KAFKA_LISTENERS" >> .env
+    #     echo "KAFKA_INTER_BROKER_LISTENER_NAME=$KAFKA_INTER_BROKER_LISTENER_NAME" >> .env
+    #     echo "KAFKA_CONTROLLER_LISTENER_NAMES=$KAFKA_CONTROLLER_LISTENER_NAMES" >> .env
+    #     echo "CLUSTER_ID=$CLUSTER_ID" >> .env
+    #     echo "KAFKA_LOG4J_ROOT_LOGLEVEL=$KAFKA_LOG4J_ROOT_LOGLEVEL" >> .env
+    #     echo "KAFKA_LOG4J_LOGGERS=$KAFKA_LOG4J_LOGGERS" >> .env
+    #     echo "OLLAMA_URL=$OLLAMA_URL" >> .env
+    #     echo "GEMINI_API_KEY=$GEMINI_API_KEY" >> .env
+    #     echo "DEEPINFRA_API_KEY=$DEEPINFRA_API_KEY" >> .env
+    #     echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
+    #     echo "LLM_MODEL=$LLM_MODEL" >> .env
+    #     echo "ZILLIZ_ADDRESS=$ZILLIZ_ADDRESS" >> .env
+    #     echo "ZILLIZ_API_KEY=$ZILLIZ_API_KEY" >> .env
+    #     echo "VECTOR_DIMENSION=$VECTOR_DIMENSION" >> .env
+    #     echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env
+    #     echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env
+    #     echo "GOOGLE_AUTH_URL=$GOOGLE_AUTH_URL" >> .env
+    #     echo "GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI" >> .env
+    #     echo "GOOGLE_SCOPES=$GOOGLE_SCOPES" >> .env
+    #     echo "GOOGLE_SSO_CLIENT_ID=$GOOGLE_SSO_CLIENT_ID" >> .env
+    #     echo "GOOGLE_SSO_CLIENT_SECRET=$GOOGLE_SSO_CLIENT_SECRET" >> .env
+    #     echo "GOOGLE_SSO_REDIRECT_URI=$GOOGLE_SSO_REDIRECT_URI" >> .env
+    #     echo "GOOGLE_SSO_SCOPES=$GOOGLE_SSO_SCOPES" >> .env
+    #     echo "MICROSOFT_CLIENT_ID=$MICROSOFT_CLIENT_ID" >> .env
+    #     echo "MICROSOFT_CLIENT_SECRET=$MICROSOFT_CLIENT_SECRET" >> .env
+    #     echo "MICROSOFT_AUTH_URL=$MICROSOFT_AUTH_URL" >> .env
+    #     echo "MICROSOFT_REDIRECT_URI=$MICROSOFT_REDIRECT_URI" >> .env
+    #     echo "MICROSOFT_SCOPES=$MICROSOFT_SCOPES" >> .env
+    #     echo "NOTION_CLIENT_ID=$NOTION_CLIENT_ID" >> .env
+    #     echo "NOTION_CLIENT_SECRET=$NOTION_CLIENT_SECRET" >> .env
+    #     echo "NOTION_REDIRECT_URI=$NOTION_REDIRECT_URI" >> .env
+    #     echo "NOTION_AUTH_URL=$NOTION_AUTH_URL" >> .env
+    #     echo "REDIS_ADDRESS=$REDIS_ADDRESS" >> .env
+    #     echo "REDIS_PASSWORD=$REDIS_PASSWORD" >> .env
+    #     echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env
+    #     echo "CA_CRT=$CA_CRT" >> .env
+    #     echo "CA_KEY=$CA_KEY" >> .env
+    #     echo "QUERY_CRT=$QUERY_CRT" >> .env
+    #     echo "QUERY_KEY=$QUERY_KEY" >> .env
+    #     echo "AUTH_CRT=$AUTH_CRT" >> .env
+    #     echo "AUTH_KEY=$AUTH_KEY" >> .env
+    #     echo "VECTOR_CRT=$VECTOR_CRT" >> .env
+    #     echo "VECTOR_KEY=$VECTOR_KEY" >> .env
+    #     echo "GATEWAY_CRT=$GATEWAY_CRT" >> .env
+    #     echo "GATEWAY_KEY=$GATEWAY_KEY" >> .env
+    #     echo "DESKTOP_CRT=$DESKTOP_CRT" >> .env
+    #     echo "DESKTOP_KEY=$DESKTOP_KEY" >> .env
+    #     echo "EMBEDDING_CRT=$EMBEDDING_CRT" >> .env
+    #     echo "EMBEDDING_KEY=$EMBEDDING_KEY" >> .env
+    #     echo "RETRIEVAL_CRT=$RETRIEVAL_CRT" >> .env
+    #     echo "RETRIEVAL_KEY=$RETRIEVAL_KEY" >> .env
+    #     echo "MQTT_CRT=$MQTT_CRT" >> .env
+    #     echo "MQTT_KEY=$MQTT_KEY" >> .env
+    #     echo "WAITLIST_CRT=$WAITLIST_CRT" >> .env
+    #     echo "WAITLIST_KEY=$WAITLIST_KEY" >> .env
+    #     echo "INTEGRATION_CRT=$INTEGRATION_CRT" >> .env
+    #     echo "INTEGRATION_KEY=$INTEGRATION_KEY" >> .env
+    #     echo "CRAWLING_CRT=$CRAWLING_CRT" >> .env
+    #     echo "CRAWLING_KEY=$CRAWLING_KEY" >> .env
+    #     echo "ALLOWED_CLIENT_IP=$ALLOWED_CLIENT_IP" >> .env
+    #     echo "SMTP_FROM=$SMTP_FROM" >> .env
+    #     echo "SMTP_USER=$SMTP_USER" >> .env
+    #     echo "SMTP_PASS=$SMTP_PASS" >> .env
+    #     echo "SMTP_HOST=$SMTP_HOST" >> .env
+    #     echo "SMTP_PORT=$SMTP_PORT" >> .env
+    #     echo "EC2_KEY_PAIR=$EC2_KEY_PAIR" >> .env
+    #     echo "EC2_PUBLIC_IP=$EC2_PUBLIC_IP" >> .env
         
-        mv .env backend/common/config/.env
+    #     mv .env backend/common/config/.env
 
-    - name: Generate Code
-      run: |
-        cd backend/common && make gen
+    # - name: Generate Code
+    #   run: |
+    #     cd backend/common && make gen
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+    # - name: Set up Docker Buildx
+    #   uses: docker/setup-buildx-action@v1
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+    # - name: Configure AWS Credentials
+    #   uses: aws-actions/configure-aws-credentials@v2
+    #   with:
+    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      run: |
-        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
+    # - name: Login to Amazon ECR
+    #   run: |
+    #     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
 
-    - name: Build and Push Docker Images
-      run: |
-        docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
-        authImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG"
-        docker tag authentication:$IMAGE_TAG $authImage
-        docker push $authImage
+    # - name: Build and Push Docker Images
+    #   run: |
+    #     docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
+    #     authImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG"
+    #     docker tag authentication:$IMAGE_TAG $authImage
+    #     docker push $authImage
 
-        docker build -t query:$IMAGE_TAG -f backend/query/Dockerfile backend
-        queryImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG"
-        docker tag query:$IMAGE_TAG $queryImage
-        docker push $queryImage
+    #     docker build -t query:$IMAGE_TAG -f backend/query/Dockerfile backend
+    #     queryImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG"
+    #     docker tag query:$IMAGE_TAG $queryImage
+    #     docker push $queryImage
 
-        docker build -t gateway:$IMAGE_TAG -f backend/gateway/Dockerfile backend
-        gatewayImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG"
-        docker tag gateway:$IMAGE_TAG $gatewayImage
-        docker push $gatewayImage
+    #     docker build -t gateway:$IMAGE_TAG -f backend/gateway/Dockerfile backend
+    #     gatewayImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG"
+    #     docker tag gateway:$IMAGE_TAG $gatewayImage
+    #     docker push $gatewayImage
 
-        docker build -t init:$IMAGE_TAG -f backend/init/Dockerfile backend
-        initImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/init:$IMAGE_TAG"
-        docker tag init:$IMAGE_TAG $initImage
-        docker push $initImage
+    #     docker build -t init:$IMAGE_TAG -f backend/init/Dockerfile backend
+    #     initImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/init:$IMAGE_TAG"
+    #     docker tag init:$IMAGE_TAG $initImage
+    #     docker push $initImage
 
-        docker build -t embedding:$IMAGE_TAG -f backend/embedding/Dockerfile backend
-        embeddingImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/embedding:$IMAGE_TAG"
-        docker tag embedding:$IMAGE_TAG $embeddingImage
-        docker push $embeddingImage
+    #     docker build -t embedding:$IMAGE_TAG -f backend/embedding/Dockerfile backend
+    #     embeddingImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/embedding:$IMAGE_TAG"
+    #     docker tag embedding:$IMAGE_TAG $embeddingImage
+    #     docker push $embeddingImage
         
-        docker build -t retrieval:$IMAGE_TAG -f backend/retrieval/Dockerfile backend
-        retrievalImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/retrieval:$IMAGE_TAG"
-        docker tag retrieval:$IMAGE_TAG $retrievalImage
-        docker push $retrievalImage
+    #     docker build -t retrieval:$IMAGE_TAG -f backend/retrieval/Dockerfile backend
+    #     retrievalImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/retrieval:$IMAGE_TAG"
+    #     docker tag retrieval:$IMAGE_TAG $retrievalImage
+    #     docker push $retrievalImage
 
-        docker build -t vector:$IMAGE_TAG -f backend/vector/Dockerfile backend
-        vectorImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/vector:$IMAGE_TAG"
-        docker tag vector:$IMAGE_TAG $vectorImage
-        docker push $vectorImage  
+    #     docker build -t vector:$IMAGE_TAG -f backend/vector/Dockerfile backend
+    #     vectorImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/vector:$IMAGE_TAG"
+    #     docker tag vector:$IMAGE_TAG $vectorImage
+    #     docker push $vectorImage  
 
-        docker build -t desktop:$IMAGE_TAG -f backend/desktop/Dockerfile backend
-        desktopImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/desktop:$IMAGE_TAG"
-        docker tag desktop:$IMAGE_TAG $desktopImage
-        docker push $desktopImage
+    #     docker build -t desktop:$IMAGE_TAG -f backend/desktop/Dockerfile backend
+    #     desktopImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/desktop:$IMAGE_TAG"
+    #     docker tag desktop:$IMAGE_TAG $desktopImage
+    #     docker push $desktopImage
 
-        docker build -t integration:$IMAGE_TAG -f backend/integration/Dockerfile backend
-        integrationImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/integration:$IMAGE_TAG"
-        docker tag integration:$IMAGE_TAG $integrationImage
-        docker push $integrationImage
+    #     docker build -t integration:$IMAGE_TAG -f backend/integration/Dockerfile backend
+    #     integrationImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/integration:$IMAGE_TAG"
+    #     docker tag integration:$IMAGE_TAG $integrationImage
+    #     docker push $integrationImage
 
-        docker build -t crawling:$IMAGE_TAG -f backend/crawling/Dockerfile backend
-        crawlingImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/crawling:$IMAGE_TAG"
-        docker tag crawling:$IMAGE_TAG $crawlingImage
-        docker push $crawlingImage
+    #     docker build -t crawling:$IMAGE_TAG -f backend/crawling/Dockerfile backend
+    #     crawlingImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/crawling:$IMAGE_TAG"
+    #     docker tag crawling:$IMAGE_TAG $crawlingImage
+    #     docker push $crawlingImage
 
-        # Replace placeholder image references with actual ECR URLs
-        sed -i "s|authImage|$authImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|queryImage|$queryImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|gatewayImage|$gatewayImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|initImage|$initImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|embeddingImage|$embeddingImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|retrievalImage|$retrievalImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|vectorImage|$vectorImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|desktopImage|$desktopImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|integrationImage|$integrationImage|g" backend/docker-compose-ec2.yaml
+    #     # Replace placeholder image references with actual ECR URLs
+    #     sed -i "s|authImage|$authImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|queryImage|$queryImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|gatewayImage|$gatewayImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|initImage|$initImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|embeddingImage|$embeddingImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|retrievalImage|$retrievalImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|vectorImage|$vectorImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|desktopImage|$desktopImage|g" backend/docker-compose-ec2.yaml
+    #     sed -i "s|integrationImage|$integrationImage|g" backend/docker-compose-ec2.yaml
 
     - name: Extract EC2 Key Pair
       run: |
@@ -432,7 +432,7 @@ jobs:
     - name: Predeploy Cleanup
       run: |
         # SSH into EC2 to create directories first for clean up
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+        ssh -vvv -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
 
           # Print current directory and list contents
           pwd
