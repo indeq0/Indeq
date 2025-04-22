@@ -35,6 +35,8 @@ services:
   init:
     image: initImage
     restart: "no"
+    env_file:
+      - /home/ec2-user/common/config/.env
     depends_on:
       kafka:
         condition: service_healthy
@@ -45,6 +47,8 @@ services:
 
   embedding:
     image: embeddingImage
+    env_file:
+      - /home/ec2-user/common/config/.env
     volumes:
       - embedding_data:/app/model_cache
     networks:
@@ -55,9 +59,8 @@ services:
     container_name: mqtt-service
     ports:
       - "8883:8883"
-    build:
-      context: .
-      dockerfile: mqtt/Dockerfile
+    env_file:
+      - /home/ec2-user/common/config/.env
     networks:
       - indeq-net
 
