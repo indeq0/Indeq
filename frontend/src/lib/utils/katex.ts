@@ -153,7 +153,8 @@ function enhanceCodeBlocks(html: string): string {
     if (language !== 'text') {
       newCode.innerHTML = highlightCode(code, language);
     } else {
-      newCode.textContent = code; // Plain text
+      // plain text styling
+      newCode.innerHTML = `<span style="color: var(--foreground, #e2e2e2);">${code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
     }
     
     newPre.appendChild(newCode);
