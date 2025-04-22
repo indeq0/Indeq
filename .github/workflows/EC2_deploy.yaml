@@ -431,6 +431,7 @@ jobs:
 
         # Checking if the docker-compose.yaml file is updated
         cat backend/docker-compose-ec2.yaml
+        echo "TESTING"
 
     - name: Extract EC2 Key Pair
       run: |
