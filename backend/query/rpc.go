@@ -377,9 +377,19 @@ func (s *queryServer) MakeQuery(ctx context.Context, req *pb.QueryRequest) (*pb.
 
 	// add a summarized title if this is the first llm response
 	if len(oldConversation.FullMessages) == 2 {
-		title, err := s.generateSummarizedTitle(ctx, oldConversation)
-		if err == nil { // only set the title if no errors were encountered in the process
+		allConversationHeaders, err1 := s.getOwnershipMapping(ctx, req.UserId)
+		title, err2 := s.generateSummarizedTitle(ctx, oldConversation)
+		if err1 == nil && err2 == nil { // only set the title if no errors were encountered in the process
 			oldConversation.Title = title
+
+			// update the title in the conversation headers
+			for i, header := range allConversationHeaders {
+				if header.ConversationId == oldConversation.ConversationId {
+					allConversationHeaders[i].Title = title
+					break
+				}
+			}
+			_ = s.updateOwnershipMapping(ctx, req.UserId, allConversationHeaders)
 		}
 	}
 

@@ -261,9 +261,10 @@ func (s *queryServer) connectToLLMApis() {
 	titleModel.ResponseMIMEType = "text/plain"
 	systemPrompt = "You are an expert at creating concise titles for conversations between a human (referred to as the user) and an AI assistant called Indeq.\n\n" +
 		"When told to create a title, follow these guidelines:\n" +
-		"1. Focus on capturing the key points, questions, and information exchanged.\n" +
+		"1. Focus on capturing the key points, questions, user intent, and information exchanged.\n" +
 		"2. Maintain factual accuracy while condensing the exchange.\n" +
-		"3. The title should be significantly shorter than the original conversation while preserving the essential context needed for understanding the interaction.\n\n"
+		"3. The title should be significantly shorter than the original conversation while preserving the essential context needed for understanding the interaction.\n" +
+		"4. ONLY output the title and nothing else.\n"
 
 	titleModel.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{
