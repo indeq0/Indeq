@@ -1,12 +1,14 @@
 <script lang="ts">
   import type { ChatMessage } from "$lib/types/chat";
-  import { renderContent, renderLatex } from "$lib/utils/katex";
+  import { renderContent, renderLatex, initCodeCopyButtons } from "$lib/utils/katex";
   import { scrollToPosition, handleScroll, initScrollCheck, positionTooltip, hideTooltip } from "$lib/utils/sources";
   import { toggleReasoning } from "$lib/utils/chat";
   import { CheckIcon, ChevronDownIcon, FileIcon, FileTextIcon, HardDriveIcon, CopyIcon, RefreshCwIcon } from "svelte-feather-icons";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { toast } from "svelte-sonner";
+  import { onMount } from "svelte";
+  import 'prismjs/themes/prism.css';
 
   export let message: ChatMessage;
   export let messageIndex: number;
@@ -20,8 +22,21 @@
   function copyMessage() {
     if (message.text) {
       navigator.clipboard.writeText(message.text);
-      toast.success('Copied to clipboard', { duration: 1000, position: 'top-right'});
+      toast.success('Copied to clipboard', { duration: 750});
     }
+  }
+
+  // Initialize code copy buttons after the component is mounted
+  onMount(() => {
+    if (message.sender !== 'user') {
+      initCodeCopyButtons();
+    }
+  });
+
+  // Watch for changes in message text to re-initialize copy buttons
+  $: if (message.text && message.sender !== 'user') {
+    // Use setTimeout to ensure the DOM has been updated
+    setTimeout(initCodeCopyButtons, 0);
   }
 </script>
 
@@ -340,5 +355,141 @@
   .toolbar-icon:hover {
     background-color: #f3f4f6;
     color: #374151;
+  }
+
+  /* Code block styles */
+  :global(.code-block-wrapper) {
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background-color: #fcfcfc;
+    border: 1px solid #eaecef;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  :global(.code-block-header) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background-color: #f6f8fa;
+    border-bottom: 1px solid #eaecef;
+    font-family: 'Monospace', monospace;
+    font-size: 0.875rem;
+  }
+
+  :global(.code-language) {
+    font-weight: 500;
+    color: #57606a;
+    text-transform: none;
+    font-size: 0.8rem;
+    letter-spacing: 0.01em;
+    font-family: 'Work Sans', sans-serif;
+  }
+
+  :global(.copy-code-button) {
+    background-color: transparent;
+    color: #57606a;
+    border: none;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :global(.copy-code-button:hover) {
+    background-color: #e1e4e8;
+    color: #24292e;
+  }
+
+  :global(.copy-code-button svg) {
+    width: 16px;
+    height: 16px;
+  }
+
+  :global(.copied-icon) {
+    color: #22863a;
+  }
+
+  :global(.code-block-wrapper pre) {
+    margin: 0;
+    padding: 1rem;
+    overflow-x: auto;
+    background-color: #fcfcfc;
+  }
+
+  :global(.code-block-wrapper code) {
+    font-family: 'Monospace', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  /* Inline code block styles */
+  :global(.inline-code) {
+    font-family: 'Monospace', monospace;
+    font-size: 0.85em;
+    background-color: #f6f8fa;
+    padding: 0.3em 0.6em;
+    border-radius: 4px;
+    border: 1px solid #eaecef;
+    white-space: nowrap;
+    color: #24292e;
+    margin: 0 0.2em;
+  }
+  
+  /* Override Prism.js token colors for a lighter theme */
+  :global(.token.comment),
+  :global(.token.prolog),
+  :global(.token.doctype),
+  :global(.token.cdata) {
+    color: #6e7781;
+  }
+  
+  :global(.token.punctuation) {
+    color: #57606a;
+  }
+  
+  :global(.token.property),
+  :global(.token.tag),
+  :global(.token.boolean),
+  :global(.token.number),
+  :global(.token.constant),
+  :global(.token.symbol) {
+    color: #0550ae;
+  }
+  
+  :global(.token.selector),
+  :global(.token.attr-name),
+  :global(.token.string),
+  :global(.token.char),
+  :global(.token.builtin) {
+    color: #0a3069;
+  }
+  
+  :global(.token.operator),
+  :global(.token.entity),
+  :global(.token.url),
+  :global(.language-css .token.string),
+  :global(.style .token.string) {
+    color: #57606a;
+  }
+  
+  :global(.token.atrule),
+  :global(.token.attr-value),
+  :global(.token.keyword) {
+    color: #cf222e;
+  }
+  
+  :global(.token.function),
+  :global(.token.class-name) {
+    color: #8250df;
+  }
+  
+  :global(.token.regex),
+  :global(.token.important) {
+    color: #d4a72c;
   }
 </style> 

@@ -74,8 +74,8 @@
 
 </script>
 
-<div class="min-h-screen mt-4 px-5">
-  <div class="w-full mx-auto py-8">
+<div class="h-full overflow-hidden mt-4 px-5">
+  <div class="w-full mx-auto py-8 overflow-auto h-full">
     <!-- Main Section -->
     <section class="mb-12 mt-4">
       <h2 class="text-xl font-medium mb-4 text-gray-900 dark:text-white">Account Settings</h2>
