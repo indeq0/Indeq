@@ -4,12 +4,9 @@
   
   export let messages: ChatMessage[] = [];
   export let isReasoning: boolean = false;
-  
+  export let updateMessages: (msgs: ChatMessage[]) => void;
   let conversationContainer: HTMLDivElement;
   
-  function updateMessages(newMessages: ChatMessage[]) {
-    messages = newMessages;
-  }
 </script>
 
 <div 

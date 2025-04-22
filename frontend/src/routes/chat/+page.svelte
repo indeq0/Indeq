@@ -7,6 +7,7 @@
   import { isIntegrated } from "$lib/utils/integration";
   import { goto } from "$app/navigation";
   import { modelStore } from "$lib/stores/modelStore";
+  import { userStore } from "$lib/stores/userStore";
   
   let userQuery = '';
   let isLoading = false;
@@ -16,6 +17,13 @@
   export let data: { 
     integrations: string[],
     desktopInfo: DesktopIntegration,
+  };
+
+  $: user = $userStore.user || {
+      name: "Guest",
+      email: "guest@example.com",
+      avatar: 3,
+      alias: "Guest"
   };
 
   onMount(() => {
@@ -72,7 +80,7 @@
   <div class="flex-1 flex flex-col w-full max-w-3xl items-center mt-[calc(33vh)]">
     <div class="w-full p-4 mb-3 text-center welcome-text" style="view-transition-name: welcome-text;">
       <div class="flex items-center justify-center gap-3">
-        <p class="text-3xl text-gray-700 font-light">How will you be productive today, Patrick?</p>
+        <p class="text-3xl text-gray-700 font-light">How will you be productive today, {user.alias}?</p>
       </div>
     </div>
     

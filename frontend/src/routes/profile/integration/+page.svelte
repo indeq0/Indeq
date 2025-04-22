@@ -70,85 +70,31 @@
   }
 </script>
 
-<div class="min-h-screen">
-  <div class="max-w-4xl mx-auto px-4 py-8">
+<div class="min-h-screen mt-7 px-5">
+  <div class="w-full mx-auto py-8">
     <h2 class="text-xl font-medium mb-4 text-gray-900 dark:text-white">Integrations</h2>
-    <main>
+    <section class="mb-12 mt-4">
       {#each integrations as integration}
-        <div class="card">
-          <div class="content">
-            <div class="logo-container">
-              <img src={integration.logo} alt="{integration.name} Logo" class="logo" />
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 flex items-center justify-center">
+                <img src={integration.logo} alt="{integration.name} Logo" class="w-10 h-10" />
+              </div>
+              <div class="space-y-1">
+                <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">{integration.name}</h4>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{integration.description}</p>
+              </div>
             </div>
             <div>
-              <span class="text-lg font-medium text-gray-900">{integration.name}</span>
-              <p class="text-gray-600 text-sm mt-1 leading-relaxed">
-                {integration.description}
-              </p>
+              <Integration_Button
+                company={integration.company}
+                isIntegrated={isProviderIntegrated(integration.company)}
+              />
             </div>
           </div>
-          <Integration_Button
-            company={integration.company}
-            isIntegrated={isProviderIntegrated(integration.company)}
-          />
         </div>
       {/each}
-    </main>
+    </section>
   </div>
 </div>
-
-<style>
-  main {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 1rem;
-    width: 100%;
-  }
-
-  .card {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    background: rgb(243, 244, 246);
-    backdrop-filter: blur(10px);
-    padding: 1rem;
-    border-radius: 8px;
-    width: 100%;
-  }
-
-  .content {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-
-  .logo-container {
-    padding: 0.5rem;
-    border-radius: 50%;
-  }
-
-  .logo {
-    height: 50px;
-    width: 50px;
-  }
-
-  @media (max-width: 768px) {
-    main {
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .card {
-      flex-direction: column;
-      text-align: center;
-      height: auto;
-    }
-
-    .content {
-      flex-direction: column;
-      align-items: center;
-    }
-  }
-</style>
