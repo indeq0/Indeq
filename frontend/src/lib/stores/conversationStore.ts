@@ -50,7 +50,6 @@ const createConversationStore = () => {
       }
     },
     deleteConversation: async (conversationId: string) => {
-      console.log('Deleting conversation:', conversationId);
       try {
         const response = await fetch(`/api/chat`, {
           method: 'DELETE',

@@ -7,7 +7,7 @@
   import { toast } from 'svelte-sonner';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
-  import { userStore } from '$lib/stores/userStore';
+  import { fetchAndStoreUserData } from '$lib/utils/user';
 
   export let data: { context: 'register' | 'forgot'; expired?: boolean };
   export let form:
@@ -50,9 +50,7 @@
 
   $: if (form && 'success' in form && form.success && 'verifiedType' in form) {
     if (form.verifiedType === 'register') {
-      if ('user' in form && form.user) {
-        userStore.setUser(form.user);
-      }
+      fetchAndStoreUserData();
       toast.success('Welcome aboard! 🎉');
       goto('/chat');
     } else {

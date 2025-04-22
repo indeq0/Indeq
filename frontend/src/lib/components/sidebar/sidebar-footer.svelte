@@ -40,7 +40,6 @@
             >
                 <Avatar.Root class="h-8 w-8 rounded-full mr-1">
                     <Avatar.Image src={`/gradients/gradient-${user.avatar}.png`} alt={user.name} />
-                    <Avatar.Fallback><CodesandboxIcon/></Avatar.Fallback>
                 </Avatar.Root>
                 <div class="hidden lg:grid flex-1 text-left text-sm leading-tight">
                     <span class="truncate font-sm">{user.name}</span>
@@ -60,7 +59,6 @@
             >
                 <Avatar.Root class="h-8 w-8 rounded-full">
                     <Avatar.Image src={`/gradients/gradient-${user.avatar}.png`} alt={user.name} />
-                    <Avatar.Fallback class="rounded-lg">{user.name[0]}</Avatar.Fallback>
                 </Avatar.Root>
                 <div class="grid flex-1 text-left text-sm leading-tight">
                     <span class="truncate font-sm">{user.name}</span>
