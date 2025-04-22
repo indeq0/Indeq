@@ -9,8 +9,8 @@
   }
 </script>
 
-<div class="w-full min-h-screen">
-  <div class="max-w-4xl mx-auto px-4 py-8">
+<div class="w-full h-screen">
+  <div class="max-w-4xl mx-auto px-6 py-8">
     <div class="flex flex-col w-full">
       <!-- Header Section -->
       <div class="flex justify-between items-center">

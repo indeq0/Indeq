@@ -37,9 +37,11 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
-    "katex": "^0.16.21",
+    "@types/prismjs": "^1.26.5",
     "@vercel/analytics": "^1.5.0",
+    "katex": "^0.16.21",
     "mongodb": "^6.14.0",
+    "prismjs": "^1.30.0",
     "svelte-feather-icons": "^4.2.0"
   }
 }
