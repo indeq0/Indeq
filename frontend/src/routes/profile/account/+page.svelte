@@ -150,6 +150,7 @@
                 type="text"
                 id="fullName"
                 bind:value={userName}
+                on:keydown={(e) => e.key === 'Enter' && savePersonalInfo()}
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="Enter your full name"
               />
@@ -163,6 +164,7 @@
                 type="text"
                 id="alias"
                 bind:value={userAlias}
+                on:keydown={(e) => e.key === 'Enter' && savePersonalInfo()}
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 placeholder="What would you like to be called?"
               />

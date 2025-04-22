@@ -54,7 +54,7 @@
         messages = [{ text: data.title, sender: "user", reasoning: [], reasoningSectionCollapsed: false, sources: [] }];
         messages = [...messages, { text: "", sender: "bot", reasoning: [], reasoningSectionCollapsed: false, sources: [] }];
         streamResponse();
-        conversationStore.fetchConversations();
+        conversationStore.fetchConversations(true);
       } else {
         messages = data.conversation;
       }
@@ -178,6 +178,12 @@
             if (eventSource) {
                 eventSource.close();
                 isLoading = false;
+            }
+            // Find the loading conversation and update its status directly
+            const loadingConversation = $conversationStore.headers.find(h => h.is_loading);
+            if (loadingConversation) {
+              // Update just the title for the conversation that was loading
+              conversationStore.updateConversationTitle(loadingConversation.conversation_id);
             }
             return;
         case "token":

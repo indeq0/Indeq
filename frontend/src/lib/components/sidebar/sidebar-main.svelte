@@ -189,7 +189,7 @@
 			{:else}
 				{#each conversations as conversation (conversation.conversation_id)}
 					<div class="w-full" animate:flip={{ duration: 300 }}>
-						<NavHistory item={{ id: conversation.conversation_id, title: conversation.title }} expanded={$sidebarExpanded} />
+						<NavHistory item={{ id: conversation.conversation_id, title: conversation.title, is_loading: conversation.is_loading }} expanded={$sidebarExpanded} />
 					</div>
 				{/each}
 			{/if}

@@ -2,6 +2,7 @@
 export interface ConversationHeader {
   conversation_id: string;
   title: string;
+  is_loading: boolean;
 }
 
 export interface ConversationSources {
