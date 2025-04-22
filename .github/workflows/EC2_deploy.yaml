@@ -61,12 +61,6 @@ jobs:
         echo "${{ secrets.ENV6 }}" >> .env
         echo "${{ secrets.ENV7 }}" >> .env
 
-        # Remove empty lines and duplicates while preserving order
-        cat .env | grep -v '^$' | awk '!seen[$0]++' > .env.tmp
-        mv .env.tmp .env
-        
-        echo "Created .env with $(wc -l < .env) lines"
-
     ## comment out starting here
     # - name: Generate Code
     #   run: |
