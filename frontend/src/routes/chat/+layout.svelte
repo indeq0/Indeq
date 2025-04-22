@@ -20,15 +20,8 @@
       // Start polling only if both online and crawling
       if (isOnline && isCrawling) {
         startPolling();
-        console.log('Desktop is online and crawling! Starting polling.');
       } else {
-        // Stop polling if either offline or not crawling
         stopPolling();
-        if (!isOnline && previousOnlineStatus) {
-          console.log('Desktop disconnected! Stopping polling.');
-        } else if (!isCrawling && isOnline) {
-          console.log('Desktop online but not crawling. Stopping polling.');
-        }
       }
       
       // Update previous status for next comparison
