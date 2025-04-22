@@ -34,7 +34,7 @@ func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlis
 		}, nil
 	}
 
-	betaCode, err := util.GenerateOTP()
+	betaCode, err := util.GenerateCode("alphanumeric")
 	if err != nil {
 		return &pb.AddToWaitlistResponse{
 			Success: false,

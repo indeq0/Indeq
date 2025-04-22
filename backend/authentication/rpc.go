@@ -193,7 +193,7 @@ func (s *authServer) Register(ctx context.Context, req *pb.RegisterRequest) (*pb
 	}
 
 	// Generate a random OTP
-	otp, err := util.GenerateOTP()
+	otp, err := util.GenerateCode("numeric")
 	if err != nil {
 		// if the OTP generation fails, return an error
 		return &pb.RegisterResponse{
@@ -289,7 +289,7 @@ func (s *authServer) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (*
 			Error:   "Something went wrong. Please try again later.",
 		}, nil
 	}
-	newOTP, err := util.GenerateOTP()
+	newOTP, err := util.GenerateCode("numeric")
 	if err != nil {
 		// if the OTP generation fails, return an error
 		return &pb.ResendOTPResponse{
@@ -590,7 +590,7 @@ func (s *authServer) ForgotPassword(ctx context.Context, req *pb.ForgotPasswordR
 	req.Email = strings.ToLower(req.Email)
 
 	// generate a random OTP
-	otp, err := util.GenerateOTP()
+	otp, err := util.GenerateCode("numeric")
 	if err != nil {
 		// if the OTP generation fails, return an error
 		return &pb.ForgotPasswordResponse{
