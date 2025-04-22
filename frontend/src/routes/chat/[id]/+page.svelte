@@ -284,6 +284,8 @@
                                         class="bg-white rounded-xl p-3 hover:bg-gray-100 transition-colors duration-200 shadow-sm border border-gray-100 relative tooltip-container"
                                         on:mouseenter={positionTooltip}
                                         on:mouseleave={hideTooltip}
+                                        on:click={() => window.open(source.fileUrl, '_blank')}
+                                        on:keydown={(e) => e.key === 'Enter' && window.open(source.fileUrl, '_blank')}
                                         data-tooltip-id={`tooltip-${messageIndex}-${sourceIndex}`}
                                         role="button"
                                         tabindex="0"
