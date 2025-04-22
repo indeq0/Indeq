@@ -11,7 +11,7 @@
     import { conversationStore } from '$lib/stores/conversationStore';
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
-    import { userStore, isLoggedIn } from '$lib/stores/userStore';
+    import { isLoggedIn } from '$lib/stores/userStore';
   import { fetchAndStoreUserData } from '$lib/utils/user';
   let { children } = $props();
 

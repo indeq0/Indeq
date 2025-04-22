@@ -6,6 +6,7 @@
 	import * as Tooltip from "$lib/components/ui/tooltip";
 	import { page } from '$app/stores';
 	import { fade } from 'svelte/transition';
+	import { flip } from 'svelte/animate';
 	import { conversationStore } from '../../stores/conversationStore';
 	import { onMount } from 'svelte';
 
@@ -187,8 +188,8 @@
 			{:else if conversations.length === 0}
 				<div class="text-center py-2 text-sm text-gray-500">No conversations yet</div>
 			{:else}
-				{#each conversations as conversation}
-					<div class="w-full">
+				{#each conversations as conversation (conversation.conversation_id)}
+					<div class="w-full" animate:flip={{ duration: 300 }}>
 						<NavHistory item={{ id: conversation.conversation_id, title: conversation.title }} expanded={$sidebarExpanded} />
 					</div>
 				{/each}
