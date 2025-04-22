@@ -52,9 +52,11 @@ jobs:
 
     - name: Create .env file
       run: |
-        
+        # first delete the .env file
+        rm backend/common/config/.env
+
         # Use cat with heredoc to prevent command interpretation
-        cat << 'EOL' > .env
+        cat << 'EOL' > backend/common/config/.env
         ${{ secrets.ENV1 }}
         ${{ secrets.ENV2 }}
         ${{ secrets.ENV3 }}
@@ -85,6 +87,64 @@ jobs:
       run: |
         aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
 
+    - name: Extract EC2 Key Pair
+      run: |
+        # Extract markers
+        BEGIN_MARKER="-----BEGIN RSA PRIVATE KEY-----"
+        END_MARKER="-----END RSA PRIVATE KEY-----"
+        
+        # Create PEM file with proper formatting
+        echo "$BEGIN_MARKER" > private_key.pem
+        echo "${{ secrets.EC2_KEY_PAIR }}" | sed 's/.\{64\}/&\n/g' >> private_key.pem
+        echo "$END_MARKER" >> private_key.pem
+
+        chmod 600 private_key.pem
+
+    - name: Predeploy Cleanup
+      run: |
+
+        #  showing private key
+        cat private_key.pem
+
+        # SSH into EC2 to create directories first for clean up
+        ssh -vvv -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
+
+          # Print current directory and list contents
+          pwd
+
+          # Install Docker if not already installed
+          if ! command -v docker &> /dev/null; then
+            echo "Docker not found. Installing..."
+            sudo yum update -y
+            sudo yum install -y docker
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker ec2-user
+            echo "Docker installed successfully"
+          fi
+
+          # Create necessary directories if they don't exist
+          if [ ! -d "/home/ec2-user/common/config" ]; then
+            mkdir -p /home/ec2-user/common/config
+          fi
+
+          # If directory exists, remove .env inside
+          if [ -f "/home/ec2-user/common/config/.env" ]; then
+            rm /home/ec2-user/common/config/.env
+          fi
+
+          # Stop and remove containers safely
+          if [ "$(docker ps -q)" ]; then
+            docker stop $(docker ps -q)
+          fi
+          if [ "$(docker ps -aq)" ]; then
+            docker rm $(docker ps -aq)
+          fi
+
+          docker image prune -f
+          docker network prune -f
+        EOF
+        
     - name: Build and Push Docker Images
       run: |
         docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
@@ -160,64 +220,6 @@ jobs:
         cat backend/docker-compose-ec2.yaml
         echo "TESTING"
 
-    - name: Extract EC2 Key Pair
-      run: |
-        # Extract markers
-        BEGIN_MARKER="-----BEGIN RSA PRIVATE KEY-----"
-        END_MARKER="-----END RSA PRIVATE KEY-----"
-        
-        # Create PEM file with proper formatting
-        echo "$BEGIN_MARKER" > private_key.pem
-        echo "${{ secrets.EC2_KEY_PAIR }}" | sed 's/.\{64\}/&\n/g' >> private_key.pem
-        echo "$END_MARKER" >> private_key.pem
-
-        chmod 600 private_key.pem
-
-    - name: Predeploy Cleanup
-      run: |
-
-        #  showing private key
-        cat private_key.pem
-
-        # SSH into EC2 to create directories first for clean up
-        ssh -vvv -o StrictHostKeyChecking=no -i private_key.pem ec2-user@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-
-          # Print current directory and list contents
-          pwd
-
-          # Install Docker if not already installed
-          if ! command -v docker &> /dev/null; then
-            echo "Docker not found. Installing..."
-            sudo yum update -y
-            sudo yum install -y docker
-            sudo systemctl start docker
-            sudo systemctl enable docker
-            sudo usermod -aG docker ec2-user
-            echo "Docker installed successfully"
-          fi
-
-          # Create necessary directories if they don't exist
-          if [ ! -d "/home/ec2-user/common/config" ]; then
-            mkdir -p /home/ec2-user/common/config
-          fi
-
-          # If directory exists, remove .env inside
-          if [ -f "/home/ec2-user/common/config/.env" ]; then
-            rm /home/ec2-user/common/config/.env
-          fi
-
-          # Stop and remove containers safely
-          if [ "$(docker ps -q)" ]; then
-            docker stop $(docker ps -q)
-          fi
-          if [ "$(docker ps -aq)" ]; then
-            docker rm $(docker ps -aq)
-          fi
-
-          docker image prune -f
-          docker network prune -f
-        EOF
-
     - name: Copy docker-compose file to EC2
       run: |
         # Copy the docker-compose file to EC2
@@ -225,7 +227,7 @@ jobs:
         cat backend/docker-compose-ec2.yaml
 
         scp -o StrictHostKeyChecking=no -i private_key.pem backend/docker-compose-ec2.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
-        scp -o StrictHostKeyChecking=no -i private_key.pem .env ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/common/config/.env
+        scp -o StrictHostKeyChecking=no -i private_key.pem backend/common/config/.env ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/common/config/.env
 
     - name: Deploy to EC2
       run: |
