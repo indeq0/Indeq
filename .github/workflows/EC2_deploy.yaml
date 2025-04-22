@@ -8,7 +8,8 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REPOSITORY_NAMESPACE: indeq
-  IMAGE_TAG: ${{ github.run_id }}
+  # IMAGE_TAG: ${{ github.run_id }}
+  IMAGE_TAG: "14588128148"
 
 jobs:
   deploy:
@@ -22,31 +23,31 @@ jobs:
       uses: actions/checkout@v2
 
     ## comment out starting here
-    - name: Install Protocol Buffers Compiler
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y protobuf-compiler
+    # - name: Install Protocol Buffers Compiler
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y protobuf-compiler
 
-    - name: Install Go
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y golang-go
+    # - name: Install Go
+    #   run: |
+    #     sudo apt-get update
+    #     sudo apt-get install -y golang-go
 
-    - name: Install protoc-gen-go
-      run: |
-        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    # - name: Install protoc-gen-go
+    #   run: |
+    #     go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    - name: Install protoc-gen-go-grpc
-      run: |
-        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-        echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
-        echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+    # - name: Install protoc-gen-go-grpc
+    #   run: |
+    #     go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+    #     echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+    #     echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
 
-    - name: Check protoc-gen-go Installation
-      run: |
-        protoc-gen-go --version || echo "protoc-gen-go not found"
+    # - name: Check protoc-gen-go Installation
+    #   run: |
+    #     protoc-gen-go --version || echo "protoc-gen-go not found"
     ## comment out ending here  
 
     - name: Generate .env Files
@@ -338,81 +339,81 @@ jobs:
         mv .env backend/common/config/.env
 
     ## comment out starting here
-    - name: Generate Code
-      run: |
-        cd backend/common && make gen
+    # - name: Generate Code
+    #   run: |
+    #     cd backend/common && make gen
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+    # - name: Set up Docker Buildx
+    #   uses: docker/setup-buildx-action@v1
 
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+    # - name: Configure AWS Credentials
+    #   uses: aws-actions/configure-aws-credentials@v2
+    #   with:
+    #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      run: |
-        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
+    # - name: Login to Amazon ECR
+    #   run: |
+    #     aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com
     ## comment out ending here
 
     - name: Build and Push Docker Images
       run: |
-        docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
+        # docker build -t authentication:$IMAGE_TAG -f backend/authentication/Dockerfile backend
         authImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/authentication:$IMAGE_TAG"
-        docker tag authentication:$IMAGE_TAG $authImage
-        docker push $authImage
+        # docker tag authentication:$IMAGE_TAG $authImage
+        # docker push $authImage
 
-        docker build -t query:$IMAGE_TAG -f backend/query/Dockerfile backend
+        # docker build -t query:$IMAGE_TAG -f backend/query/Dockerfile backend
         queryImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/query:$IMAGE_TAG"
-        docker tag query:$IMAGE_TAG $queryImage
-        docker push $queryImage
+        # docker tag query:$IMAGE_TAG $queryImage
+        # docker push $queryImage
 
-        docker build -t gateway:$IMAGE_TAG -f backend/gateway/Dockerfile backend
+        # docker build -t gateway:$IMAGE_TAG -f backend/gateway/Dockerfile backend
         gatewayImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/gateway:$IMAGE_TAG"
-        docker tag gateway:$IMAGE_TAG $gatewayImage
-        docker push $gatewayImage
+        # docker tag gateway:$IMAGE_TAG $gatewayImage
+        # docker push $gatewayImage
 
-        docker build -t init:$IMAGE_TAG -f backend/init/Dockerfile backend
+        # docker build -t init:$IMAGE_TAG -f backend/init/Dockerfile backend
         initImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/init:$IMAGE_TAG"
-        docker tag init:$IMAGE_TAG $initImage
-        docker push $initImage
+        # docker tag init:$IMAGE_TAG $initImage
+        # docker push $initImage
 
-        docker build -t embedding:$IMAGE_TAG -f backend/embedding/Dockerfile backend
+        # docker build -t embedding:$IMAGE_TAG -f backend/embedding/Dockerfile backend
         embeddingImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/embedding:$IMAGE_TAG"
-        docker tag embedding:$IMAGE_TAG $embeddingImage
-        docker push $embeddingImage
+        # docker tag embedding:$IMAGE_TAG $embeddingImage
+        # docker push $embeddingImage
         
-        docker build -t retrieval:$IMAGE_TAG -f backend/retrieval/Dockerfile backend
+        # docker build -t retrieval:$IMAGE_TAG -f backend/retrieval/Dockerfile backend
         retrievalImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/retrieval:$IMAGE_TAG"
-        docker tag retrieval:$IMAGE_TAG $retrievalImage
-        docker push $retrievalImage
+        # docker tag retrieval:$IMAGE_TAG $retrievalImage
+        # docker push $retrievalImage
 
-        docker build -t vector:$IMAGE_TAG -f backend/vector/Dockerfile backend
+        # docker build -t vector:$IMAGE_TAG -f backend/vector/Dockerfile backend
         vectorImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/vector:$IMAGE_TAG"
-        docker tag vector:$IMAGE_TAG $vectorImage
-        docker push $vectorImage  
+        # docker tag vector:$IMAGE_TAG $vectorImage
+        # docker push $vectorImage  
 
-        docker build -t desktop:$IMAGE_TAG -f backend/desktop/Dockerfile backend
+        # docker build -t desktop:$IMAGE_TAG -f backend/desktop/Dockerfile backend
         desktopImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/desktop:$IMAGE_TAG"
-        docker tag desktop:$IMAGE_TAG $desktopImage
-        docker push $desktopImage
+        # docker tag desktop:$IMAGE_TAG $desktopImage
+        # docker push $desktopImage
 
-        docker build -t integration:$IMAGE_TAG -f backend/integration/Dockerfile backend
+        # docker build -t integration:$IMAGE_TAG -f backend/integration/Dockerfile backend
         integrationImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/integration:$IMAGE_TAG"
-        docker tag integration:$IMAGE_TAG $integrationImage
-        docker push $integrationImage
+        # docker tag integration:$IMAGE_TAG $integrationImage
+        # docker push $integrationImage
 
-        docker build -t crawling:$IMAGE_TAG -f backend/crawling/Dockerfile backend
+        # docker build -t crawling:$IMAGE_TAG -f backend/crawling/Dockerfile backend
         crawlingImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/crawling:$IMAGE_TAG"
-        docker tag crawling:$IMAGE_TAG $crawlingImage
-        docker push $crawlingImage
+        # docker tag crawling:$IMAGE_TAG $crawlingImage
+        # docker push $crawlingImage
 
-        docker build -t mqtt:$IMAGE_TAG -f backend/mqtt/Dockerfile backend
+        # docker build -t mqtt:$IMAGE_TAG -f backend/mqtt/Dockerfile backend
         mqttImage="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY_NAMESPACE/mqtt:$IMAGE_TAG"
-        docker tag mqtt:$IMAGE_TAG $mqttImage
-        docker push $mqttImage
+        # docker tag mqtt:$IMAGE_TAG $mqttImage
+        # docker push $mqttImage
 
 
         # Replace placeholder image references with actual ECR URLs
