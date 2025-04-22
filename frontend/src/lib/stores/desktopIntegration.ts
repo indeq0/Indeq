@@ -13,8 +13,8 @@ const desktopIntegration = writable<DesktopIntegration>({
 // Polling internals
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
 let statusCheckInterval: ReturnType<typeof setInterval> | null = null;
-const POLL_INTERVAL = 500; // 5 seconds
-const STATUS_CHECK_INTERVAL = 30000; // 30 seconds
+const POLL_INTERVAL = 1000; // 1 second
+const STATUS_CHECK_INTERVAL = 10000; // 10 seconds
 
 // Function to start polling the local endpoint (not the GO backend directly)
 function startPolling(interval = POLL_INTERVAL) {
