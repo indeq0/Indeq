@@ -406,15 +406,18 @@ jobs:
         # docker push $crawlingImage
 
         # Replace placeholder image references with actual ECR URLs
-        sed -i "s|authImage|$authImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|queryImage|$queryImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|gatewayImage|$gatewayImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|initImage|$initImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|embeddingImage|$embeddingImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|retrievalImage|$retrievalImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|vectorImage|$vectorImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|desktopImage|$desktopImage|g" backend/docker-compose-ec2.yaml
-        sed -i "s|integrationImage|$integrationImage|g" backend/docker-compose-ec2.yaml
+        sed -i "s|authImage|$authImage|g" backend/docker-compose.yaml
+        sed -i "s|queryImage|$queryImage|g" backend/docker-compose.yaml
+        sed -i "s|gatewayImage|$gatewayImage|g" backend/docker-compose.yaml
+        sed -i "s|initImage|$initImage|g" backend/docker-compose.yaml
+        sed -i "s|embeddingImage|$embeddingImage|g" backend/docker-compose.yaml
+        sed -i "s|retrievalImage|$retrievalImage|g" backend/docker-compose.yaml
+        sed -i "s|vectorImage|$vectorImage|g" backend/docker-compose.yaml
+        sed -i "s|desktopImage|$desktopImage|g" backend/docker-compose.yaml
+        sed -i "s|integrationImage|$integrationImage|g" backend/docker-compose.yaml
+
+        # Checking if the docker-compose.yaml file is updated
+        cat backend/docker-compose.yaml
 
     - name: Extract EC2 Key Pair
       run: |
@@ -462,7 +465,7 @@ jobs:
     - name: Copy docker-compose file to EC2
       run: |
         # Copy the docker-compose file to EC2
-        scp -v -o StrictHostKeyChecking=no -i private_key.pem backend/docker-compose-ec2.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
+        scp -v -o StrictHostKeyChecking=no -i private_key.pem backend/docker-compose.yaml ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/
         scp -v -o StrictHostKeyChecking=no -i private_key.pem backend/common/config/.env ec2-user@${{ secrets.EC2_PUBLIC_IP }}:/home/ec2-user/common/config/.env
 
     - name: Deploy to EC2
