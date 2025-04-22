@@ -50,28 +50,23 @@ jobs:
     #     protoc-gen-go --version || echo "protoc-gen-go not found"
     ## comment out ending here  
 
-    - name: Create ENV File
-      jobs:
-        combine-env:
-          runs-on: ubuntu-latest
-          steps:
-            - name: Create .env file
-              run: |
-                # Create .env file and properly handle multi-line content
-                printf '%s\n' "${{ secrets.ENV1 }}" > .env
-                printf '%s\n' "${{ secrets.ENV2 }}" >> .env
-                printf '%s\n' "${{ secrets.ENV3 }}" >> .env
-                printf '%s\n' "${{ secrets.ENV4 }}" >> .env
-                printf '%s\n' "${{ secrets.ENV5 }}" >> .env
-                printf '%s\n' "${{ secrets.ENV6 }}" >> .env
-                printf '%s\n' "${{ secrets.ENV7 }}" >> .env
+    - name: Create .env file
+      run: |
+        # Create .env file and properly handle multi-line content
+        printf '%s\n' "${{ secrets.ENV1 }}" > .env
+        printf '%s\n' "${{ secrets.ENV2 }}" >> .env
+        printf '%s\n' "${{ secrets.ENV3 }}" >> .env
+        printf '%s\n' "${{ secrets.ENV4 }}" >> .env
+        printf '%s\n' "${{ secrets.ENV5 }}" >> .env
+        printf '%s\n' "${{ secrets.ENV6 }}" >> .env
+        printf '%s\n' "${{ secrets.ENV7 }}" >> .env
 
-                # Clean up the file
-                sed -i '/^[[:space:]]*$/d' .env  # Remove empty lines
-                sed -i 's/\r//g' .env            # Remove carriage returns
-                
-                # Verify file content (safely)
-                echo "Number of lines in .env: $(wc -l < .env)"
+        # Clean up the file
+        sed -i '/^[[:space:]]*$/d' .env  # Remove empty lines
+        sed -i 's/\r//g' .env            # Remove carriage returns
+        
+        # Verify file content (safely)
+        echo "Number of lines in .env: $(wc -l < .env)"
 
     ## comment out starting here
     # - name: Generate Code
