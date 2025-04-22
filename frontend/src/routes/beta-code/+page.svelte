@@ -43,6 +43,7 @@
 				</div>
 
 				<div class="space-y-4 w-full">
+          <input type="hidden" name="betaCode" bind:value={betaCode} />
 					<InputOTP
 						bind:value={betaCode}
 						length={6}
@@ -58,16 +59,13 @@
 
 					<Input
 						type="email"
+            name="email"
 						placeholder="m@example.com"
 						bind:value={email}
             class="bg-white dark:bg-slate-900"   
 					/>
 
 					<Button type="submit" class="w-full">Check Access</Button>
-
-					{#if form && 'error' in form && form.error}
-						<p class="text-sm text-red-500 text-center">{form.error}</p>
-					{/if}
 				</div>
 
         <div>

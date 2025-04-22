@@ -624,8 +624,8 @@ func handleValidateBetaCode(clients *ServiceClients) http.HandlerFunc {
 		}
 
 		res, err := clients.waitlistClient.ValidateBetaCode(r.Context(), &pb.ValidateBetaCodeRequest{
-			Email: validateBetaCodeRequest.Email,
 			BetaCode: validateBetaCodeRequest.BetaCode,
+			Email:    validateBetaCodeRequest.Email,
 		})
 		if err != nil {
 			http.Error(w, "Failed to validate beta code", http.StatusInternalServerError)
