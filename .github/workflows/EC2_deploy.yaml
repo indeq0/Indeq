@@ -496,14 +496,14 @@ jobs:
             sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
           fi
 
-          # # Configure AWS CLI
-          # aws configure set region us-east-1
+          # Configure AWS CLI
+          aws configure set region us-east-1
 
-          # # Verify IAM role
-          # aws sts get-caller-identity
+          # Verify IAM role
+          aws sts get-caller-identity
 
-          # # Login to ECR without credentials (using IAM role)
-          # aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+          # Login to ECR without credentials (using IAM role)
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
           
           # # Run docker compose with absolute path
           # docker compose -f /home/ec2-user/docker-compose-ec2.yaml up -d
