@@ -50,33 +50,23 @@ jobs:
     #     protoc-gen-go --version || echo "protoc-gen-go not found"
     ## comment out ending here  
 
-    - name: Create .env file
-      run: |
-        # Create or clear .env file
-        > .env
-        
-        # List all secrets and create .env entries
-        gh secret list --json name -q '.[].name' | while read secret_name; do
-          # Skip GitHub's default secrets
-          if [[ "$secret_name" != GITHUB_* ]] && [[ "$secret_name" != "GH_"* ]]; then
-            # Use indirect reference to get secret value
-            secret_value="${!secret_name}"
-            echo "$secret_name=$secret_value" >> .env
-          fi
-        done
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        ${{ toJSON(secrets) }}
+    - name: Create combined .env file
+        run: |
+          # Create .env file with all environment chunks
+          echo "${{ secrets.ENV1 }}" > .env
+          echo "${{ secrets.ENV2 }}" >> .env
+          echo "${{ secrets.ENV3 }}" >> .env
+          echo "${{ secrets.ENV4 }}" >> .env
+          echo "${{ secrets.ENV5 }}" >> .env
+          echo "${{ secrets.ENV6 }}" >> .env
+          echo "${{ secrets.ENV7 }}" >> .env
 
-    - name: Verify .env creation (safely)
-      run: |
-        if [ -f .env ]; then
-          echo "ENV file created successfully"
-          echo "Number of variables: $(wc -l < .env)"
-        else
-          echo "Failed to create .env file"
-          exit 1
-        fi
+          # Remove empty lines and duplicates while preserving order
+          cat .env | grep -v '^$' | awk '!seen[$0]++' > .env.tmp
+          mv .env.tmp .env
+          
+          echo "Created .env with $(wc -l < .env) lines"
+          
     ## comment out starting here
     # - name: Generate Code
     #   run: |
