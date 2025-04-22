@@ -9,6 +9,7 @@
   import { modelStore } from "$lib/stores/modelStore";
   import { userStore } from "$lib/stores/userStore";
   import { toast } from "svelte-sonner";
+  import { fetchAndStoreUserData } from "$lib/utils/user";
   
   let userQuery = '';
   let isLoading = false;
@@ -31,6 +32,7 @@
     }
 
     if (data.ssoLogin) {
+      fetchAndStoreUserData();
       toast.success('Welcome back!');
     }
   
