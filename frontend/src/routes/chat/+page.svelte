@@ -1,8 +1,8 @@
 <script lang="ts">
   import { SendIcon } from "svelte-feather-icons";
-  import { onDestroy, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import "katex/dist/katex.min.css";
-  import { initialize, startPolling, stopPolling, desktopIntegration, startStatusCheck, stopStatusCheck } from '$lib/stores/desktopIntegration';
+  import { desktopIntegration } from '$lib/stores/desktopIntegration';
   import type { DesktopIntegration } from "$lib/types/desktopIntegration";
   import { isIntegrated } from "$lib/utils/integration";
   import { goto } from "$app/navigation";
@@ -15,7 +15,6 @@
   let isLoading = false;
   let conversationId = '';
   let chatInput: HTMLTextAreaElement;
-  let previousOnlineStatus = false;
 
   export let data: { integrations: string[], desktopInfo: DesktopIntegration, ssoLogin: boolean };
 
@@ -26,43 +25,7 @@
       alias: "Guest"
   };
   
-  // Reactive statement to handle changes in online status
-  $: {
-    const isOnline = $desktopIntegration.isOnline;
-    const isCrawling = $desktopIntegration.isCrawling;
-    
-    // Start polling only if both online and crawling
-    if (isOnline && isCrawling) {
-      startPolling();
-      console.log('Desktop is online and crawling! Starting polling.');
-    } else {
-      // Stop polling if either offline or not crawling
-      stopPolling();
-      if (!isOnline && previousOnlineStatus) {
-        console.log('Desktop disconnected! Stopping polling.');
-      } else if (!isCrawling && isOnline) {
-        console.log('Desktop online but not crawling. Stopping polling.');
-      }
-    }
-    
-    // Update previous status for next comparison
-    previousOnlineStatus = isOnline;
-  }
-
   onMount(() => {
-    initialize(data.desktopInfo);
-    
-    // Set initial previous status
-    previousOnlineStatus = data.desktopInfo.isOnline;
-    
-    // Start polling if initially crawling
-    if (data.desktopInfo.isCrawling) {
-      startPolling();
-    }
-    
-    // Always start the status check to monitor desktop online status
-    startStatusCheck();
-
     if (data.ssoLogin) {
       fetchAndStoreUserData();
       toast.success('Welcome back!');
@@ -101,12 +64,6 @@
       isLoading = false;
     }
   }
-  
-  onDestroy(() => {
-    stopPolling();
-    stopStatusCheck();
-  });
-
 </script>
 
 <svelte:head>
