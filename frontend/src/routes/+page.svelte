@@ -3,6 +3,7 @@
   import { onMount } from 'svelte';
   import { toast } from 'svelte-sonner';
   import { PUBLIC_GO_BACKEND_URL } from '$env/static/public';
+  import BetaCodeCallout from '$lib/components/beta/BetaCodeCallout.svelte';
 
   let email = '';
   let submitStatus: 'idle' | 'loading' | 'success' | 'error' = 'idle';
@@ -159,6 +160,7 @@
       </div>
     </div>
   </div>
+  <BetaCodeCallout />
 </main>
 
 <style>
