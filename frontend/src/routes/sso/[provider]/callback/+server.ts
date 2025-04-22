@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { GO_BACKEND_URL } from '$env/static/private';
-import { verifyToken } from '$lib/server/auth';
+import { toast } from 'svelte-sonner';
 
 export const GET = async ({ params, url, cookies }: RequestEvent) => {
   const provider = params.provider;
@@ -37,13 +37,11 @@ export const GET = async ({ params, url, cookies }: RequestEvent) => {
           maxAge: 60 * 60 * 24, // 1 day
           sameSite: 'lax'
         });
-
-        // Redirect to chat page on success with user_created status
-        cookies.set('user_created', data.user_created ? 'true' : 'false', {
+        cookies.set('google_login', 'true', {
           httpOnly: true,
           secure: true,
           path: '/',
-          maxAge: 5,
+          maxAge: 60, // 1 minute
           sameSite: 'lax'
         });
         return new Response(null, {

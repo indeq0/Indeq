@@ -41,33 +41,8 @@ export const actions = {
         sameSite: 'lax'
       });
 
-      cookies.set('loggingIn', 'true', {
-        httpOnly: true,
-        secure: true,
-        path: '/',
-        maxAge: 5,
-        sameSite: 'lax'
-      });
-
-      cookies.set("user_created", "false", {
-        httpOnly: true,
-        secure: true,
-        path: '/',
-        maxAge: 5,
-        sameSite: 'lax'
-      });
-
-      cookies.set("redirected_from", "login", {
-        httpOnly: true, // Prevent client-side access
-        secure: true, // Only send over HTTPS
-        path: '/', // Accessible across the entire app
-        maxAge: 5, // 5 seconds
-        sameSite: 'lax'
-      });
-
       if (response.error == null || response.error === '') {
-        // Return user data to the client for the userStore
-        return { success: true};
+        return { success: true };
       } else {
         return fail(400, { error: response.error });
       }
