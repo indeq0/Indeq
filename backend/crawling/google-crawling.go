@@ -125,24 +125,41 @@ func (s *crawlingServer) GetChunksFromGoogle(ctx context.Context, req *pb.GetChu
 
 	client := createGoogleOAuthClient(ctx, accessToken)
 
+	resourceMap := make(map[string][]string)
+	uniqueMetadata := make(map[string]*pb.Metadata)
+
+	for _, metadata := range req.Metadatas {
+		resourceMap[metadata.FileId] = append(resourceMap[metadata.FileId], metadata.ChunkId)
+		if _, exists := uniqueMetadata[metadata.FileId]; !exists {
+			uniqueMetadata[metadata.FileId] = metadata
+		}
+	}
+
 	type chunkResult struct {
-		chunk *pb.TextChunkMessage
-		err   error
+		resourceID string
+		chunk      *pb.TextChunkMessage
+		err        error
 	}
 
 	numWorkers, err := strconv.Atoi(os.Getenv("CRAWLING_GOOGLE_RETRIVAL_MAX_WORKERS"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve the k value from the env variables: %w", err)
 	}
-	resultChan := make(chan chunkResult, len(req.Metadatas))
+
+	resultChan := make(chan chunkResult, len(uniqueMetadata))
 	var wg sync.WaitGroup
+
+	uniqueMetadataList := make([]*pb.Metadata, 0, len(uniqueMetadata))
+	for _, metadata := range uniqueMetadata {
+		uniqueMetadataList = append(uniqueMetadataList, metadata)
+	}
 
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go func(start int) {
 			defer wg.Done()
-			for j := start; j < len(req.Metadatas); j += numWorkers {
-				metadata := req.Metadatas[j]
+			for j := start; j < len(uniqueMetadataList); j += numWorkers {
+				metadata := uniqueMetadataList[j]
 				internalMetadata := Metadata{
 					DateCreated:      metadata.DateCreated.AsTime(),
 					DateLastModified: metadata.DateLastModified.AsTime(),
@@ -157,19 +174,21 @@ func (s *crawlingServer) GetChunksFromGoogle(ctx context.Context, req *pb.GetChu
 					Service:          metadata.Service,
 				}
 
-				chunk, err := RetrieveGoogleCrawler(ctx, client, internalMetadata)
+				chunks, err := RetrieveGoogleCrawler(ctx, client, internalMetadata, resourceMap[metadata.FileId])
 				if err != nil {
 					resultChan <- chunkResult{
-						err: fmt.Errorf("error retrieving chunk for %s: %w", internalMetadata.FilePath, err),
+						resourceID: metadata.FileId,
+						err:        fmt.Errorf("error retrieving chunk for %s: %w", internalMetadata.FilePath, err),
 					}
 					continue
 				}
-
-				protoChunk := &pb.TextChunkMessage{
-					Metadata: s.convertToProtoMetadata(chunk.Metadata),
-					Content:  chunk.Content,
+				for _, chunk := range chunks {
+					protoChunk := &pb.TextChunkMessage{
+						Metadata: s.convertToProtoMetadata(chunk.Metadata),
+						Content:  chunk.Content,
+					}
+					resultChan <- chunkResult{resourceID: metadata.FileId, chunk: protoChunk}
 				}
-				resultChan <- chunkResult{chunk: protoChunk}
 			}
 		}(i)
 	}
@@ -181,6 +200,7 @@ func (s *crawlingServer) GetChunksFromGoogle(ctx context.Context, req *pb.GetChu
 
 	var chunks []*pb.TextChunkMessage
 	var errs []error
+
 	for result := range resultChan {
 		if result.err != nil {
 			errs = append(errs, result.err)
@@ -202,13 +222,13 @@ func (s *crawlingServer) GetChunksFromGoogle(ctx context.Context, req *pb.GetChu
 	}, nil
 }
 
-func RetrieveGoogleCrawler(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+func RetrieveGoogleCrawler(ctx context.Context, client *http.Client, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	if metadata.Service == "GOOGLE_DRIVE" {
-		return RetrieveFromDrive(ctx, client, metadata)
+		return RetrieveFromDrive(ctx, client, metadata, chunkIDs)
 	}
 	if metadata.Service == "GOOGLE_GMAIL" {
 		return RetrieveFromGmail(ctx, client, metadata)
 	}
 
-	return TextChunkMessage{}, fmt.Errorf("unsupported service: %s", metadata.Service)
+	return nil, fmt.Errorf("unsupported service: %s", metadata.Service)
 }

@@ -461,16 +461,16 @@ func GetStartPageToken(ctx context.Context, client *http.Client) (string, error)
 }
 
 // RetrieveFromDrive retrieves content based on file type
-func RetrieveFromDrive(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+func RetrieveFromDrive(ctx context.Context, client *http.Client, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	switch metadata.ResourceType {
 	case "application/vnd.google-apps.document":
-		return RetrieveGoogleDoc(ctx, client, metadata)
+		return RetrieveGoogleDoc(ctx, client, metadata, chunkIDs)
 	case "application/vnd.google-apps.presentation":
-		return RetrieveGoogleSlides(ctx, client, metadata)
+		return RetrieveGoogleSlides(ctx, client, metadata, chunkIDs)
 	case "application/pdf":
-		return RetrieveGooglePDF(ctx, client, metadata)
+		return RetrieveGooglePDF(ctx, client, metadata, chunkIDs)
 	default:
-		return TextChunkMessage{}, fmt.Errorf("unsupported resource type: %s", metadata.ResourceType)
+		return nil, fmt.Errorf("unsupported resource type: %s", metadata.ResourceType)
 	}
 }
 

@@ -46,20 +46,11 @@ func (p *PdfProcessor) PdfProcess(ctx context.Context, file File) (File, error) 
 
 	metadata := file.File[0].Metadata
 
-	// Create a temporary file with a unique name
-	tempFile, err := os.CreateTemp("", fmt.Sprintf("pdf-process-%s-*.pdf", metadata.ResourceID))
-	if err != nil {
-		return file, fmt.Errorf("failed to create temp file: %w", err)
-	}
-	tempPath := tempFile.Name()
-	tempFile.Close()
-	defer os.Remove(tempPath)
-
-	err = p.downloadPdf(metadata.ResourceID, tempPath)
+	err := p.downloadPdf(metadata.ResourceID, metadata.Title)
 	if err != nil {
 		return file, err
 	}
-	text, err := extractText(tempPath)
+	text, err := extractText(metadata.Title)
 	if err != nil {
 		return file, err
 	}
@@ -72,34 +63,32 @@ func (p *PdfProcessor) PdfProcess(ctx context.Context, file File) (File, error) 
 }
 
 // PdfRetrieve retrieves a specific chunk from a Google PDF file
-func (p *PdfProcessor) PdfRetrieve(ctx context.Context, metadata Metadata) (TextChunkMessage, error) {
-	// Create a temporary file with a unique name
-	tempFile, err := os.CreateTemp("", fmt.Sprintf("pdf-retrieve-%s-*.pdf", metadata.ResourceID))
+func (p *PdfProcessor) PdfRetrieve(ctx context.Context, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
+	err := p.downloadPdf(metadata.ResourceID, metadata.Title)
 	if err != nil {
-		return TextChunkMessage{}, fmt.Errorf("failed to create temp file: %w", err)
-	}
-	tempPath := tempFile.Name()
-	tempFile.Close()          // Close immediately as we'll reopen it in downloadPdf
-	defer os.Remove(tempPath) // Clean up the temp file when done
-
-	err = p.downloadPdf(metadata.ResourceID, tempPath)
-	if err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
 
-	text, err := extractText(tempPath)
+	text, err := extractText(metadata.Title)
 	if err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
-	chunks, err := p.RetrievePdfChunk(ctx, metadata.ChunkID, text)
-	if err != nil {
-		return TextChunkMessage{}, err
-	}
+	results := make([]TextChunkMessage, 0, len(chunkIDs))
+	for _, chunkID := range chunkIDs {
+		chunkContent, err := p.RetrievePdfChunk(ctx, chunkID, text)
+		if err != nil {
+			return nil, err
+		}
 
-	return TextChunkMessage{
-		Metadata: metadata,
-		Content:  chunks,
-	}, nil
+		chunkMetadata := metadata
+		chunkMetadata.ChunkID = chunkID
+
+		results = append(results, TextChunkMessage{
+			Metadata: chunkMetadata,
+			Content:  chunkContent,
+		})
+	}
+	return results, nil
 }
 
 // downloadPdf downloads a PDF file from Google Drive and saves it to a local file
@@ -207,28 +196,27 @@ func (p *PdfProcessor) RetrievePdfChunk(ctx context.Context, chunkID string, tex
 		return "", fmt.Errorf("invalid chunk ID format")
 	}
 
-	startoffset, err := strconv.Atoi(parts[0])
+	start, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return "", fmt.Errorf("failed to convert startoffset to int: %v", err)
-	}
-	endoffset, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return "", fmt.Errorf("failed to convert endoffset to int: %v", err)
+		return "", fmt.Errorf("failed to parse start position: %v", err)
 	}
 
-	textLen := len(text)
-	if startoffset < 0 {
-		startoffset = 0
-	}
-	if endoffset > textLen {
-		endoffset = textLen
-	}
-	if startoffset > endoffset {
-		return "", fmt.Errorf("invalid offset range")
+	end, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", fmt.Errorf("failed to parse end position: %v", err)
 	}
 
-	chunkText := text[startoffset:endoffset]
-	return sanitizeText(chunkText), nil
+	words := strings.Fields(text)
+	if start >= len(words) {
+		return "", fmt.Errorf("start position %d exceeds text length %d", start, len(words))
+	}
+
+	if end >= len(words) {
+		end = len(words) - 1
+	}
+
+	chunkWords := words[start : end+1]
+	return strings.Join(chunkWords, " "), nil
 }
 
 // ProcessGooglePDF processes a Google PDF file into chunks
@@ -241,10 +229,10 @@ func ProcessGooglePDF(ctx context.Context, client *http.Client, file File) (File
 }
 
 // RetrieveGooglePDF retrieves a specific chunk from a Google PDF file
-func RetrieveGooglePDF(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+func RetrieveGooglePDF(ctx context.Context, client *http.Client, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	processor, err := NewPdfProcessor(ctx, client, rateLimiter)
 	if err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
-	return processor.PdfRetrieve(ctx, metadata)
+	return processor.PdfRetrieve(ctx, metadata, chunkIDs)
 }

@@ -86,30 +86,35 @@ func (sp *SlidesProcessor) SlidesProcess(ctx context.Context, file File) (File, 
 }
 
 // Retrieve fetches a specific chunk from a Google Slides presentation based on its ChunkID
-func (sp *SlidesProcessor) SlidesRetrieve(ctx context.Context, metadata Metadata) (TextChunkMessage, error) {
+func (sp *SlidesProcessor) SlidesRetrieve(ctx context.Context, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	if err := sp.SlidesValidate(ctx, metadata.UserID); err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
 
 	doc, err := sp.SlidesFetchDocument(ctx, metadata.ResourceID)
 	if err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
 
-	startSlide, startElement, startOffset, endSlide, endElement, endOffset, err := sp.ParseSlidesChunkID(metadata.ChunkID)
-	if err != nil {
-		return TextChunkMessage{}, err
-	}
+	results := make([]TextChunkMessage, 0, len(chunkIDs))
+	for _, chunkID := range chunkIDs {
+		startSlide, startElement, startOffset, endSlide, endElement, endOffset, err := sp.ParseSlidesChunkID(chunkID)
+		if err != nil {
+			return nil, err
+		}
 
-	chunkWords, err := sp.ExtractSlidesChunk(doc, startSlide, startElement, startOffset, endSlide, endElement, endOffset)
-	if err != nil {
-		return TextChunkMessage{}, err
-	}
+		chunkWords, err := sp.ExtractSlidesChunk(doc, startSlide, startElement, startOffset, endSlide, endElement, endOffset)
+		if err != nil {
+			return nil, err
+		}
 
-	return TextChunkMessage{
-		Metadata: metadata,
-		Content:  strings.Join(chunkWords, " "),
-	}, nil
+		result := TextChunkMessage{
+			Metadata: metadata,
+			Content:  strings.Join(chunkWords, " "),
+		}
+		results = append(results, result)
+	}
+	return results, nil
 }
 
 // validate ensures the userID is present and respects rate limits
@@ -467,10 +472,10 @@ func ProcessGoogleSlides(ctx context.Context, client *http.Client, file File) (F
 }
 
 // RetrieveGoogleSlides retrieves a specific chunk from a Google Slides presentation
-func RetrieveGoogleSlides(ctx context.Context, client *http.Client, metadata Metadata) (TextChunkMessage, error) {
+func RetrieveGoogleSlides(ctx context.Context, client *http.Client, metadata Metadata, chunkIDs []string) ([]TextChunkMessage, error) {
 	processor, err := NewSlidesProcessor(ctx, client, rateLimiter)
 	if err != nil {
-		return TextChunkMessage{}, err
+		return nil, err
 	}
-	return processor.SlidesRetrieve(ctx, metadata)
+	return processor.SlidesRetrieve(ctx, metadata, chunkIDs)
 }
