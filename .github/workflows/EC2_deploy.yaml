@@ -276,5 +276,4 @@ jobs:
           
           # Run docker compose with absolute path
           docker compose -f /home/ec2-user/docker-compose-ec2.yaml up -d
-
         EOF
