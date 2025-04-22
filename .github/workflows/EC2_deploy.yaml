@@ -465,15 +465,6 @@ jobs:
             echo "Docker installed successfully"
           fi
 
-          # Install Docker Compose V2 if not present
-          if ! command -v docker-compose &> /dev/null && ! command -v docker compose &> /dev/null; then
-            echo "Installing Docker Compose V2..."
-            # For Amazon Linux 2023
-            sudo mkdir -p /usr/local/lib/docker/cli-plugins
-            sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-            sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-          fi
-
           # Create necessary directories if they don't exist
           if [ ! -d "/home/ec2-user/common/config" ]; then
             mkdir -p /home/ec2-user/common/config
