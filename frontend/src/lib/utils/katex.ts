@@ -83,7 +83,28 @@ function highlightCode(code: string, language: string): string {
   }
 }
 
+// Process inline code blocks surrounded by single backticks
+function processInlineCodeBlocks(html: string): string {
+  // This regex finds text surrounded by single backticks (but not triple backticks used for code blocks)
+  // and not already inside a code element or pre element
+  const regex = /(?<!`{2})(`)((?!\1).+?)(\1)(?!`{2})(?![^<]*<\/code>|[^<]*<\/pre>)/g;
+  
+  // Remove the backticks and wrap the content in a code tag
+  return html.replace(regex, (match, openingTick, content, closingTick) => {
+    // Escape HTML in the content to prevent injection
+    const escapedContent = content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+      
+    return `<code class="inline-code" style="font-family: 'Work Sans', monospace; border-radius: 6px;">${escapedContent}</code>`;
+  });
+}
+
 function enhanceCodeBlocks(html: string): string {
+  // First process any inline code blocks that might not be caught by marked
+  html = processInlineCodeBlocks(html);
+  
   const tempDiv = document.createElement('div');
   tempDiv.innerHTML = html;
   
@@ -106,6 +127,7 @@ function enhanceCodeBlocks(html: string): string {
     const formattedLanguage = formatLanguageName(language);
     
     const code = codeElement.textContent || '';
+    
     const wrapper = document.createElement('div');
     wrapper.className = 'code-block-wrapper';
     
@@ -143,6 +165,31 @@ function enhanceCodeBlocks(html: string): string {
     if (parent) {
       parent.replaceChild(wrapper, preElement);
     }
+  });
+  
+  // Process all inline code elements
+  const inlineCodeElements = tempDiv.querySelectorAll('code:not(pre > code)');
+  inlineCodeElements.forEach(element => {
+    // Add the inline-code class if not already present
+    if (!element.classList.contains('inline-code')) {
+      element.classList.add('inline-code');
+    }
+    
+    // Set Work Sans font if element is an HTMLElement
+    if (element instanceof HTMLElement) {
+      element.style.fontFamily = "'Work Sans', monospace";
+      element.style.borderRadius = "6px"; // Make inline code more rounded
+    }
+    
+    // Remove backticks if they exist
+    let content = element.textContent || '';
+    if (content.startsWith('`') && content.endsWith('`')) {
+      content = content.substring(1, content.length - 1);
+    }
+    
+    // Remove any remaining backticks (sometimes they can be embedded differently)
+    content = content.replace(/`/g, '');
+    element.textContent = content;
   });
   
   return tempDiv.innerHTML;

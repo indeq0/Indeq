@@ -427,6 +427,19 @@
     line-height: 1.5;
   }
   
+  /* Inline code block styles */
+  :global(.inline-code) {
+    font-family: 'Monospace', monospace;
+    font-size: 0.85em;
+    background-color: #f6f8fa;
+    padding: 0.3em 0.6em;
+    border-radius: 4px;
+    border: 1px solid #eaecef;
+    white-space: nowrap;
+    color: #24292e;
+    margin: 0 0.2em;
+  }
+  
   /* Override Prism.js token colors for a lighter theme */
   :global(.token.comment),
   :global(.token.prolog),
