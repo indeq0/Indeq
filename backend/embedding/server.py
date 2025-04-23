@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Load the env variables
 load_dotenv()
-MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "sentence-transformers/static-retrieval-mrl-en-v1")
+MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "tomaarsen/static-retrieval-mrl-en-v1")
 RERANKER_MODEL_NAME=os.getenv("EMBEDDING_RERANKER", "cross-encoder/ms-marco-MiniLM-L6-v2")
 GRPC_PORT = os.getenv("EMBEDDING_PORT", "")
 MAX_WORKERS = int(os.getenv("EMBEDDING_MAX_WORKERS", "10"))
