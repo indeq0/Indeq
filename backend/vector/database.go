@@ -93,7 +93,7 @@ func (s *vectorServer) insertRows(ctx context.Context, textChunkMessages []*pb.T
 // func(context)
 //   - sets up a collection in the database with hardcoded fields as defined in this function
 //   - assumes: milvus client is connected
-func (s *vectorServer) setupCollection(ctx context.Context, collectionName string) error {
+func (s *vectorServer) setupChunkCollection(ctx context.Context, collectionName string) error {
 	// Check if collection already exists
 	exists, err := s.milvusClient.HasCollection(ctx, collectionName)
 	if err != nil {
@@ -108,9 +108,74 @@ func (s *vectorServer) setupCollection(ctx context.Context, collectionName strin
 		return nil
 	}
 
-	dimension, err := strconv.Atoi(os.Getenv("VECTOR_DIMENSION"))
+	dimension, err := strconv.Atoi(os.Getenv("CHUNK_VECTOR_DIMENSION"))
 	if err != nil {
-		return fmt.Errorf("failed to parse .env vector dimension value: %w", err)
+		return fmt.Errorf("failed to parse .env chunk vector dimension value: %w", err)
+	}
+
+	// define the schema
+	idField := entity.NewField().WithName("id").WithDataType(entity.FieldTypeInt64).WithIsPrimaryKey(true).WithIsAutoID(true)
+	userIdField := entity.NewField().WithName("user_id").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
+	chunkStartField := entity.NewField().WithName("start").WithDataType(entity.FieldTypeInt64)
+	chunkEndField := entity.NewField().WithName("end").WithDataType(entity.FieldTypeInt64)
+	chunkIdField := entity.NewField().WithName("chunk_id").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
+	fileIdField := entity.NewField().WithName("file_id").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
+	// create a binary vector field
+	vector := entity.NewField().WithName("vector").WithDataType(entity.FieldTypeBinaryVector).WithDim(int64(dimension))
+
+	schema := entity.NewSchema().WithName(collectionName).
+		WithField(idField).
+		WithField(userIdField).
+		WithField(chunkStartField).
+		WithField(chunkEndField).
+		WithField(chunkIdField).
+		WithField(fileIdField).
+		WithField(vector)
+
+	// create the collection
+	err = s.milvusClient.CreateCollection(ctx, schema, 1, client.WithConsistencyLevel(entity.ClBounded))
+	if err != nil {
+		return fmt.Errorf("failed to create collection: %w", err)
+	}
+
+	// create a vector index
+	index, err := entity.NewIndexBinIvfFlat(entity.HAMMING, 256) // nlist {128-1024} larger is faster search, slower build
+	if err != nil {
+		return fmt.Errorf("failed to create index: %w", err)
+	}
+	err = s.milvusClient.CreateIndex(ctx, collectionName, "vector", index, false, client.WithIndexName("chunk_vector_index"))
+	if err != nil {
+		return fmt.Errorf("failed to set up index in database: %w", err)
+	}
+
+	// load the collection
+	if err = s.milvusClient.LoadCollection(ctx, collectionName, false); err != nil {
+		return fmt.Errorf("failed to load the collection into memory: %w", err)
+	}
+	return nil
+}
+
+// func(context)
+//   - sets up a collection in the database with hardcoded fields as defined in this function
+//   - assumes: milvus client is connected
+func (s *vectorServer) setupFileCollection(ctx context.Context, collectionName string) error {
+	// Check if collection already exists
+	exists, err := s.milvusClient.HasCollection(ctx, collectionName)
+	if err != nil {
+		return fmt.Errorf("failed to check if collection exists: %w", err)
+	}
+
+	// If collection already exists, load it and return
+	if exists {
+		if err = s.milvusClient.LoadCollection(ctx, collectionName, false); err != nil {
+			return fmt.Errorf("failed to load the collection into memory: %w", err)
+		}
+		return nil
+	}
+
+	dimension, err := strconv.Atoi(os.Getenv("TITLE_VECTOR_DIMENSION"))
+	if err != nil {
+		return fmt.Errorf("failed to parse .env title vector dimension value: %w", err)
 	}
 
 	// define the schema
@@ -120,9 +185,6 @@ func (s *vectorServer) setupCollection(ctx context.Context, collectionName strin
 	resourceTypeField := entity.NewField().WithName("resource_type").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
 	userIdField := entity.NewField().WithName("user_id").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
 	filePathField := entity.NewField().WithName("file_path").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
-	chunkStartField := entity.NewField().WithName("start").WithDataType(entity.FieldTypeInt64)
-	chunkEndField := entity.NewField().WithName("end").WithDataType(entity.FieldTypeInt64)
-	chunkIdField := entity.NewField().WithName("chunk_id").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
 	titleField := entity.NewField().WithName("title").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
 	serviceField := entity.NewField().WithName("service").WithDataType(entity.FieldTypeVarChar).WithTypeParams(entity.TypeParamMaxLength, "255")
 	platformField := entity.NewField().WithName("platform").WithDataType(entity.FieldTypeInt8)
@@ -138,9 +200,6 @@ func (s *vectorServer) setupCollection(ctx context.Context, collectionName strin
 		WithField(userIdField).
 		WithField(filePathField).
 		WithField(resourceTypeField).
-		WithField(chunkStartField).
-		WithField(chunkEndField).
-		WithField(chunkIdField).
 		WithField(titleField).
 		WithField(platformField).
 		WithField(fileIdField).
@@ -159,7 +218,7 @@ func (s *vectorServer) setupCollection(ctx context.Context, collectionName strin
 	if err != nil {
 		return fmt.Errorf("failed to create index: %w", err)
 	}
-	err = s.milvusClient.CreateIndex(ctx, collectionName, "vector", index, false, client.WithIndexName("vector_index"))
+	err = s.milvusClient.CreateIndex(ctx, collectionName, "vector", index, false, client.WithIndexName("title_vector_index"))
 	if err != nil {
 		return fmt.Errorf("failed to set up index in database: %w", err)
 	}
