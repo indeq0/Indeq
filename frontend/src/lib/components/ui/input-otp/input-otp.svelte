@@ -13,6 +13,9 @@
 	/** Disable the whole control. */
 	export let disabled = false;
 
+	/** Mode of the input. */
+	export let mode: 'numeric' | 'alpha' = 'numeric';
+
 	const dispatch = createEventDispatcher<{ change: string; complete: string }>();
 
 	let inputs: HTMLInputElement[] = [];
@@ -27,10 +30,13 @@
 	function handleInput(e: Event, i: number) {
 		const el = e.target as HTMLInputElement;
         let chars = el.value.replace(/\s+/g, '');
-        if (!/^\d$/.test(chars)) {
-            el.value = '';
-            return;
-        }
+        
+		const isValidChar = mode === 'numeric' ? /^\d$/ : /^[a-zA-Z0-9]$/;
+		if (!isValidChar.test(chars)) {
+			el.value = '';
+			return;
+		}
+
         const arr = value.split('');
         for (let j = 0; j < chars.length && i + j < length; j++) {
             arr[i + j] = chars[j];
@@ -70,7 +76,7 @@
 	function handlePaste(e: ClipboardEvent) {
 		const txt = (e.clipboardData?.getData('text') || '').replace(/\s+/g, '');
 
-        if (/^\d+$/.test(txt)) {
+        if (mode === 'numeric' ? /^\d+$/.test(txt) : /^[a-zA-Z0-9]+$/.test(txt)) {
             const digits = txt.slice(0, length).padEnd(length, '');
             value = digits;
             digits.split('').forEach((d, idx) => (inputs[idx].value = d));
@@ -101,8 +107,8 @@
 			class="w-12 h-12 text-center text-lg border rounded focus:outline-none
 			focus:ring focus:ring-primary disabled:opacity-50"
 			type="text"
-			inputmode="numeric"
-			pattern="\d*"
+			inputmode={mode === 'numeric' ? 'numeric' : 'text'}
+			pattern={mode === 'numeric' ? '\\d*' : '[a-zA-Z0-9]*'}
 			maxlength="1"
 			disabled={disabled}
 			value={value[i] ?? ''}

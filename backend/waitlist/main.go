@@ -7,9 +7,11 @@ import (
 	"net"
 	"net/mail"
 	"os"
+	"strings"
 	"time"
 
 	pb "github.com/cc-0000/indeq/common/api"
+	"github.com/cc-0000/indeq/common/util"
 	"github.com/cc-0000/indeq/common/config"
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
@@ -23,6 +25,7 @@ type WaitlistServer struct {
 
 func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlistRequest) (*pb.AddToWaitlistResponse, error) {
 	log.Println("Adding to waitlist:", req.Email)
+	req.Email = strings.ToLower(req.Email)
 	_, err := mail.ParseAddress(req.Email)
 	if err != nil {
 		return &pb.AddToWaitlistResponse{
@@ -31,10 +34,18 @@ func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlis
 		}, nil
 	}
 
+	betaCode, err := util.GenerateCode("alphanumeric")
+	if err != nil {
+		return &pb.AddToWaitlistResponse{
+			Success: false,
+			Message: "Something went wrong. Please try again later.",
+		}, nil
+	}
+
 	result, err := s.db.ExecContext(ctx, `
-		INSERT INTO waitlist (email)
-		VALUES ($1)
-		ON CONFLICT (email) DO NOTHING`, req.Email)
+		INSERT INTO waitlist (email, beta_code)
+		VALUES ($1, $2)
+		ON CONFLICT (email) DO NOTHING`, req.Email, betaCode)
 
 	if err != nil {
 		log.Println("Database insert error:", err)
@@ -63,6 +74,40 @@ func (s *WaitlistServer) AddToWaitlist(ctx context.Context, req *pb.AddToWaitlis
 	return &pb.AddToWaitlistResponse{
 		Success: true,
 		Message: "You're on the waitlist! 🎉",
+	}, nil
+}
+
+func (s *WaitlistServer) ValidateBetaCode(ctx context.Context, req *pb.ValidateBetaCodeRequest) (*pb.ValidateBetaCodeResponse, error) {
+	log.Println("Validating beta code:", req.BetaCode)
+
+	if req.BetaCode == "" || req.Email == "" {
+		return &pb.ValidateBetaCodeResponse{
+			Success: false,
+			Message: "Invalid request",
+		}, nil
+	}
+
+	var betaCode string
+	err := s.db.QueryRowContext(ctx, `
+		SELECT beta_code FROM waitlist WHERE email = $1
+	`, req.Email).Scan(&betaCode)
+	if err != nil {
+		return &pb.ValidateBetaCodeResponse{
+			Success: false,
+			Message: "Could not validate beta code. Please try again later.",
+		}, nil
+	}
+
+	if betaCode != req.BetaCode {
+		return &pb.ValidateBetaCodeResponse{
+			Success: false,
+			Message: "Invalid beta code",
+		}, nil
+	}
+
+	return &pb.ValidateBetaCodeResponse{
+		Success: true,
+		Message: "Beta code validated successfully",
 	}, nil
 }
 
@@ -99,6 +144,7 @@ func main() {
 		CREATE TABLE IF NOT EXISTS waitlist (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			email VARCHAR(255) UNIQUE NOT NULL,
+			beta_code VARCHAR(6) NOT NULL,
 			created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 		);
 	`)

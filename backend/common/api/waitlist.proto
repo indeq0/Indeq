@@ -6,6 +6,7 @@ package api;
 
 service WaitlistService {
     rpc AddToWaitlist(AddToWaitlistRequest) returns (AddToWaitlistResponse);
+    rpc ValidateBetaCode(ValidateBetaCodeRequest) returns (ValidateBetaCodeResponse);
 }
 
 message AddToWaitlistRequest {
@@ -13,6 +14,16 @@ message AddToWaitlistRequest {
 }
 
 message AddToWaitlistResponse {
+    bool success = 1;
+    string message = 2;
+}
+
+message ValidateBetaCodeRequest {
+    string email = 1;
+    string beta_code = 2;
+}
+
+message ValidateBetaCodeResponse {
     bool success = 1;
     string message = 2;
 }
